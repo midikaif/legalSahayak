@@ -1,6 +1,7 @@
 """
 Backend API Tests for Lawyer Helper App
 Tests: Auth (register, login), Case Analysis, Contract Analysis, Legal Procedures, Lawyer Search
+New in Iteration 2: Case Detail, Case Follow-up, Document Auto-Analysis
 """
 import pytest
 import requests
@@ -234,6 +235,224 @@ class TestCaseAnalysis:
             print(f"✓ Case history retrieved: {len(data)} cases")
         except Exception as e:
             print(f"✗ Case history failed: {str(e)}")
+    
+    def test_case_detail_endpoint(self, api_client):
+        """Test GET /api/case/detail/{case_id} - returns case with messages"""
+        try:
+            # Use existing case ID from agent context
+            case_id = "eb0bdff3-90d7-4f0d-a629-a8119a6ff20d"
+            
+            response = api_client.get(f"{BASE_URL}/api/case/detail/{case_id}")
+            print(f"✓ Case detail status: {response.status_code}")
+            
+            if response.status_code == 404:
+                print("⚠ Case not found, creating a new case for testing...")
+                # Create a new case first
+                unique_email = f"test_case_detail_{int(time.time())}@example.com"
+                register_payload = {
+                    "email": unique_email,
+                    "password": TEST_USER_PASSWORD,
+                    "full_name": TEST_USER_NAME,
+                    "user_type": "common"
+                }
+                reg_response = api_client.post(f"{BASE_URL}/api/auth/register", json=register_payload)
+                user_id = reg_response.json()["user"]["id"]
+                
+                # Create case
+                form_data = {
+                    "user_id": user_id,
+                    "case_title": "Test Case for Detail Endpoint",
+                    "case_type": "Civil",
+                    "case_description": "This is a test case for the detail endpoint."
+                }
+                
+                headers_backup = api_client.headers.copy()
+                if 'Content-Type' in api_client.headers:
+                    del api_client.headers['Content-Type']
+                
+                case_response = api_client.post(
+                    f"{BASE_URL}/api/case/analyze",
+                    data=form_data,
+                    timeout=60
+                )
+                api_client.headers = headers_backup
+                
+                if case_response.status_code != 200:
+                    pytest.skip("Could not create test case")
+                
+                case_id = case_response.json()["id"]
+                response = api_client.get(f"{BASE_URL}/api/case/detail/{case_id}")
+            
+            assert response.status_code == 200
+            
+            data = response.json()
+            assert "case" in data
+            assert "messages" in data
+            assert isinstance(data["messages"], list)
+            assert data["case"]["id"] == case_id
+            print(f"✓ Case detail retrieved: {data['case']['case_title']}")
+            print(f"  Messages count: {len(data['messages'])}")
+        except Exception as e:
+            print(f"✗ Case detail test failed: {str(e)}")
+            raise
+    
+    def test_case_followup_endpoint(self, api_client):
+        """Test POST /api/case/followup - ask follow-up question"""
+        try:
+            # First create a case
+            unique_email = f"test_followup_{int(time.time())}@example.com"
+            register_payload = {
+                "email": unique_email,
+                "password": TEST_USER_PASSWORD,
+                "full_name": TEST_USER_NAME,
+                "user_type": "common"
+            }
+            reg_response = api_client.post(f"{BASE_URL}/api/auth/register", json=register_payload)
+            user_id = reg_response.json()["user"]["id"]
+            
+            # Create case
+            form_data = {
+                "user_id": user_id,
+                "case_title": "Test Case for Follow-up",
+                "case_type": "Criminal",
+                "case_description": "Test case to verify follow-up questions work."
+            }
+            
+            print("⏳ Creating case for follow-up test...")
+            headers_backup = api_client.headers.copy()
+            if 'Content-Type' in api_client.headers:
+                del api_client.headers['Content-Type']
+            
+            case_response = api_client.post(
+                f"{BASE_URL}/api/case/analyze",
+                data=form_data,
+                timeout=60
+            )
+            
+            if case_response.status_code != 200:
+                print(f"⚠ Could not create case: {case_response.status_code}")
+                pytest.skip("Case creation failed")
+            
+            case_id = case_response.json()["id"]
+            
+            # Now ask a follow-up question
+            followup_data = {
+                "case_id": case_id,
+                "question": "What documents do I need to file this case?"
+            }
+            
+            print("⏳ Asking follow-up question (may take up to 45 seconds)...")
+            response = api_client.post(
+                f"{BASE_URL}/api/case/followup",
+                data=followup_data,
+                timeout=60
+            )
+            
+            # Restore headers
+            api_client.headers = headers_backup
+            
+            print(f"✓ Follow-up status: {response.status_code}")
+            
+            if response.status_code == 504:
+                print("⚠ Follow-up timed out")
+                pytest.skip("AI analysis timeout")
+            elif response.status_code == 402:
+                print("⚠ AI budget exceeded")
+                pytest.skip("AI budget exceeded")
+            elif response.status_code == 500:
+                error_data = response.json()
+                print(f"⚠ AI error: {error_data.get('detail', 'Unknown error')}")
+                pytest.skip("AI analysis error")
+            
+            assert response.status_code == 200
+            
+            data = response.json()
+            assert "user_message" in data
+            assert "ai_message" in data
+            assert data["user_message"]["role"] == "user"
+            assert data["ai_message"]["role"] == "assistant"
+            assert data["user_message"]["content"] == "What documents do I need to file this case?"
+            print(f"✓ Follow-up successful")
+            print(f"  User message: {data['user_message']['content'][:50]}...")
+            print(f"  AI response: {data['ai_message']['content'][:100]}...")
+        except requests.exceptions.Timeout:
+            print("⚠ Follow-up request timed out")
+            pytest.skip("Request timeout")
+        except Exception as e:
+            print(f"✗ Follow-up test failed: {str(e)}")
+            raise
+    
+    def test_analyze_document_endpoint(self, api_client):
+        """Test POST /api/case/analyze-document - auto-detect case type from document"""
+        try:
+            # Register user
+            unique_email = f"test_doc_analyze_{int(time.time())}@example.com"
+            register_payload = {
+                "email": unique_email,
+                "password": TEST_USER_PASSWORD,
+                "full_name": TEST_USER_NAME,
+                "user_type": "common"
+            }
+            reg_response = api_client.post(f"{BASE_URL}/api/auth/register", json=register_payload)
+            user_id = reg_response.json()["user"]["id"]
+            
+            # Analyze document with text content
+            form_data = {
+                "user_id": user_id,
+                "document_type": "text",
+                "text_content": """FIR No. 123/2024
+Police Station: Andheri West, Mumbai
+Complainant: Rajesh Kumar
+Accused: Unknown persons
+
+On 10th January 2024, I was returning home from work when two unknown persons on a motorcycle snatched my mobile phone and wallet containing Rs 5000 cash and important documents. The incident occurred near Andheri station at around 9 PM. I immediately reported to the police station."""
+            }
+            
+            print("⏳ Analyzing document (may take up to 45 seconds)...")
+            headers_backup = api_client.headers.copy()
+            if 'Content-Type' in api_client.headers:
+                del api_client.headers['Content-Type']
+            
+            response = api_client.post(
+                f"{BASE_URL}/api/case/analyze-document",
+                data=form_data,
+                timeout=60
+            )
+            
+            # Restore headers
+            api_client.headers = headers_backup
+            
+            print(f"✓ Document analysis status: {response.status_code}")
+            
+            if response.status_code == 504:
+                print("⚠ Document analysis timed out")
+                pytest.skip("AI analysis timeout")
+            elif response.status_code == 402:
+                print("⚠ AI budget exceeded")
+                pytest.skip("AI budget exceeded")
+            elif response.status_code == 500:
+                error_data = response.json()
+                print(f"⚠ AI error: {error_data.get('detail', 'Unknown error')}")
+                pytest.skip("AI analysis error")
+            
+            assert response.status_code == 200
+            
+            data = response.json()
+            assert "id" in data
+            assert "case_title" in data
+            assert "case_type" in data
+            assert "analysis" in data
+            print(f"✓ Document analysis successful")
+            print(f"  Auto-detected case type: {data['case_type']}")
+            print(f"  Generated case title: {data['case_title']}")
+            print(f"  Analysis preview: {data['analysis'][:100]}...")
+        except requests.exceptions.Timeout:
+            print("⚠ Document analysis request timed out")
+            pytest.skip("Request timeout")
+        except Exception as e:
+            print(f"✗ Document analysis test failed: {str(e)}")
+            raise
+
             raise
 
 

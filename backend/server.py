@@ -123,6 +123,13 @@ class LegalProcedure(BaseModel):
     court_hierarchy: List[str]
     estimated_timeline: str
 
+class ChatMessage(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    case_id: str
+    role: str  # "user" or "assistant"
+    content: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
 # ==================== HELPER FUNCTIONS ====================
 
 def verify_password(plain_password, hashed_password):
@@ -357,6 +364,144 @@ async def get_case_history(user_id: str):
         case.pop('_id', None)
     
     return cases
+
+@api_router.get("/case/detail/{case_id}")
+async def get_case_detail(case_id: str):
+    """Get a single case with its chat messages"""
+    case = await db.case_analyses.find_one({"id": case_id})
+    if not case:
+        raise HTTPException(status_code=404, detail="Case not found")
+    case.pop('_id', None)
+    
+    messages = await db.case_messages.find({"case_id": case_id}).sort("created_at", 1).to_list(200)
+    for msg in messages:
+        msg.pop('_id', None)
+    
+    return {"case": case, "messages": messages}
+
+@api_router.post("/case/followup")
+async def case_followup(case_id: str = Form(...), question: str = Form(...)):
+    """Ask a follow-up question about an existing case"""
+    case = await db.case_analyses.find_one({"id": case_id})
+    if not case:
+        raise HTTPException(status_code=404, detail="Case not found")
+    
+    # Save user message
+    user_msg = ChatMessage(case_id=case_id, role="user", content=question)
+    await db.case_messages.insert_one(user_msg.dict())
+    
+    # Build context from case
+    context = f"""Previous case analysis:
+Case Title: {case.get('case_title', '')}
+Case Type: {case.get('case_type', '')}
+Description: {case.get('case_description', '')}
+
+Previous AI Analysis (summary): {str(case.get('analysis', ''))[:2000]}"""
+    
+    # Get previous messages for context
+    prev_messages = await db.case_messages.find({"case_id": case_id}).sort("created_at", -1).to_list(10)
+    chat_context = "\n".join([f"{'User' if m['role']=='user' else 'AI'}: {m['content'][:500]}" for m in reversed(prev_messages[-6:])])
+    
+    prompt = f"""Based on the case context and previous conversation, answer this follow-up question clearly and helpfully.
+
+{context}
+
+Recent conversation:
+{chat_context}
+
+User's question: {question}
+
+Provide a clear, helpful answer focused on Indian law. Be specific and actionable."""
+    
+    ai_response = await get_ai_analysis(prompt)
+    
+    # Save AI message
+    ai_msg = ChatMessage(case_id=case_id, role="assistant", content=ai_response)
+    await db.case_messages.insert_one(ai_msg.dict())
+    
+    return {
+        "user_message": user_msg.dict(),
+        "ai_message": ai_msg.dict()
+    }
+
+@api_router.post("/case/analyze-document")
+async def analyze_case_from_document(
+    user_id: str = Form(...),
+    document_type: str = Form(...),
+    text_content: Optional[str] = Form(None),
+    file_content: Optional[str] = Form(None)
+):
+    """Analyze a case from uploaded legal documents (FIR, court reports, etc.)"""
+    
+    # Extract text from document
+    extracted_text = ""
+    if document_type == "text" and text_content:
+        extracted_text = text_content
+    elif document_type == "pdf" and file_content:
+        pdf_bytes = base64.b64decode(file_content.split('base64,')[1] if 'base64,' in file_content else file_content)
+        extracted_text = extract_text_from_pdf(pdf_bytes)
+    elif document_type == "image" and file_content:
+        extracted_text = extract_text_from_image(file_content)
+    
+    if not extracted_text or len(extracted_text.strip()) < 10:
+        raise HTTPException(status_code=400, detail="Could not extract text from the document. Try pasting the text directly.")
+    
+    # AI auto-detect case type and analyze
+    detect_prompt = f"""You are an expert Indian legal assistant. A user has uploaded a legal document. 
+Analyze this document and:
+
+1. Detect what type of document this is (FIR, Court Order, Legal Notice, Agreement, etc.)
+2. Auto-detect the case type (Civil, Criminal, Family, Property, Consumer, Labor, Tax, Corporate, Other)
+3. Generate a suitable case title
+4. Provide a full case analysis
+
+Document text:
+{extracted_text[:5000]}
+
+Respond ONLY with valid JSON (no markdown, no code blocks) with these exact keys:
+{{
+  "detected_document_type": "...",
+  "case_type": "...",
+  "case_title": "...",
+  "analysis": "detailed analysis text",
+  "strengths": ["point1", "point2"],
+  "weaknesses": ["point1", "point2"],
+  "strategy": ["step1", "step2"],
+  "questions_for_lawyer": ["q1", "q2"],
+  "loopholes": ["point1", "point2"]
+}}"""
+    
+    analysis_result = await get_ai_analysis(detect_prompt)
+    
+    # Try to parse JSON from response
+    import json
+    parsed = None
+    try:
+        cleaned = analysis_result.strip()
+        if cleaned.startswith('```'):
+            cleaned = cleaned.split('\n', 1)[1] if '\n' in cleaned else cleaned[3:]
+            cleaned = cleaned.rsplit('```', 1)[0]
+        parsed = json.loads(cleaned)
+    except Exception:
+        parsed = None
+    
+    case_title = parsed.get("case_title", "Document Analysis") if parsed else "Document Analysis"
+    case_type = parsed.get("case_type", "Other") if parsed else "Other"
+    
+    case_analysis = CaseAnalysis(
+        user_id=user_id,
+        case_title=case_title,
+        case_type=case_type,
+        case_description=f"[Auto-analyzed from uploaded {document_type} document]",
+        analysis=analysis_result
+    )
+    
+    await db.case_analyses.insert_one(case_analysis.dict())
+    
+    result = case_analysis.dict()
+    result.pop('_id', None)
+    
+    return result
 
 # ==================== LEGAL PROCEDURE ROUTES ====================
 
