@@ -318,9 +318,12 @@ async def analyze_case(
     user_id: str = Form(...),
     case_title: str = Form(...),
     case_type: str = Form(...),
-    case_description: str = Form(...)
+    case_description: str = Form(...),
+    language: str = Form("english")
 ):
     """Analyze a legal case and provide strategy"""
+    
+    lang_instruction = "Respond in Hinglish (Hindi words written in English script mixed with English). Make it conversational and easy to understand for a common Indian person." if language == "hinglish" else "Respond in clear, simple English."
     
     analysis_prompt = f"""As an expert in Indian law, analyze this case:
 
@@ -328,15 +331,19 @@ Case Type: {case_type}
 Title: {case_title}
 Description: {case_description}
 
-Provide:
-1. Detailed analysis of the case
-2. Strengths of the case (array of points)
-3. Weaknesses and challenges (array of points)
-4. Recommended legal strategy (array of steps)
-5. Important questions to ask a lawyer (array of questions)
-6. Potential loopholes or legal precedents that could help
+{lang_instruction}
 
-Provide response in JSON format with keys: analysis, strengths, weaknesses, strategy, questions_for_lawyer"""
+Provide a detailed, engaging analysis. Use bold (**text**) for important terms. Make it interesting to read, not boring legal jargon.
+
+Respond ONLY with valid JSON (no markdown code blocks) with these exact keys:
+{{
+  "analysis": "detailed analysis text with **bold** for key terms",
+  "strengths": ["point1", "point2"],
+  "weaknesses": ["point1", "point2"],
+  "strategy": ["step1", "step2"],
+  "questions_for_lawyer": ["q1", "q2"],
+  "loopholes": ["point1", "point2"]
+}}"""
     
     analysis_result = await get_ai_analysis(analysis_prompt)
     
@@ -511,14 +518,19 @@ async def get_legal_procedure(case_type: str):
     
     procedure_prompt = f"""Provide a detailed step-by-step legal procedure for a {case_type} case in India.
 
-Include:
-1. All steps from filing to resolution (with step numbers, descriptions, and estimated timelines)
-2. Required documents and evidence
-3. Court hierarchy (which courts handle this type of case)
-4. Estimated overall timeline
-5. Important legal provisions and acts applicable
+Write in an engaging, easy-to-understand way. Use **bold** for important terms.
 
-Provide response in JSON format with keys: steps (array of objects with step_number, description, timeline), required_documents (array), court_hierarchy (array), estimated_timeline (string)"""
+Respond ONLY with valid JSON (no markdown code blocks) with these exact keys:
+{{
+  "steps": [
+    {{"step_number": 1, "description": "Step description with **bold** key terms", "timeline": "1-2 weeks"}},
+    {{"step_number": 2, "description": "Next step...", "timeline": "2-4 weeks"}}
+  ],
+  "required_documents": ["Document 1", "Document 2"],
+  "court_hierarchy": ["Court 1 handles X", "Court 2 handles Y"],
+  "estimated_timeline": "6 months to 2 years overall",
+  "important_acts": ["Act 1 - what it covers", "Act 2"]
+}}"""
     
     procedure_result = await get_ai_analysis(procedure_prompt)
     

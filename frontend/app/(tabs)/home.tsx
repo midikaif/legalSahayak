@@ -38,7 +38,7 @@ export default function HomeScreen() {
       description: 'Step-by-step guide for legal processes',
       icon: 'list',
       color: '#F59E0B',
-      route: '/procedure',
+      route: '/(tabs)/case',
     },
     {
       id: 4,

@@ -33,6 +33,7 @@ export default function CaseScreen() {
   const [caseTitle, setCaseTitle] = useState('');
   const [caseType, setCaseType] = useState('Civil');
   const [caseDescription, setCaseDescription] = useState('');
+  const [language, setLanguage] = useState<'english' | 'hinglish'>('english');
   const [loading, setLoading] = useState(false);
   const [analysis, setAnalysis] = useState<any>(null);
   const [history, setHistory] = useState<any[]>([]);
@@ -56,6 +57,7 @@ export default function CaseScreen() {
       formData.append('case_title', caseTitle);
       formData.append('case_type', caseType);
       formData.append('case_description', caseDescription);
+      formData.append('language', language);
 
       const response = await fetch(`${API_URL}/api/case/analyze`, {
         method: 'POST',
@@ -298,6 +300,26 @@ export default function CaseScreen() {
                 numberOfLines={8}
                 placeholderTextColor="#9CA3AF"
               />
+            </View>
+
+            <View style={styles.languageToggle}>
+              <Text style={styles.label}>Response Language</Text>
+              <View style={styles.langButtons}>
+                <TouchableOpacity
+                  testID="lang-english"
+                  style={[styles.langBtn, language === 'english' && styles.langBtnActive]}
+                  onPress={() => setLanguage('english')}
+                >
+                  <Text style={[styles.langBtnText, language === 'english' && styles.langBtnTextActive]}>English</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  testID="lang-hinglish"
+                  style={[styles.langBtn, language === 'hinglish' && styles.langBtnActive]}
+                  onPress={() => setLanguage('hinglish')}
+                >
+                  <Text style={[styles.langBtnText, language === 'hinglish' && styles.langBtnTextActive]}>Hinglish</Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             <TouchableOpacity
@@ -762,5 +784,33 @@ const styles = StyleSheet.create({
   historyDate: {
     fontSize: 12,
     color: '#9CA3AF',
+  },
+  languageToggle: {
+    marginBottom: 20,
+  },
+  langButtons: {
+    flexDirection: 'row',
+  },
+  langBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    marginRight: 8,
+    borderRadius: 12,
+  },
+  langBtnActive: {
+    backgroundColor: '#10B981',
+    borderColor: '#10B981',
+  },
+  langBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  langBtnTextActive: {
+    color: '#fff',
   },
 });
