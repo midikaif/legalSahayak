@@ -151,7 +151,7 @@ async def get_ai_analysis(prompt: str, context: str = "") -> str:
         chat = LlmChat(
             api_key=EMERGENT_LLM_KEY,
             session_id=str(uuid.uuid4()),
-            system_message="You are an expert legal assistant specializing in Indian law. Provide clear, accurate, and helpful legal analysis. Always respond in a well-structured format."
+            system_message="You are a senior Indian attorney with 25+ years of experience in criminal, civil, and corporate law. You specialize in IPC, CrPC, Indian Contract Act 1872, and landmark Supreme Court & High Court judgements. Always cite exact sections and relevant case precedents. Be precise, structured, and formal in legal drafting. When simplifying, use plain Indian English without losing legal accuracy."
         ).with_model("gemini", "gemini-2.5-flash")
         
         full_prompt = f"{context}\n\n{prompt}" if context else prompt
