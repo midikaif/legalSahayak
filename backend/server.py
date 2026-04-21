@@ -16,8 +16,10 @@ from io import BytesIO
 from PIL import Image
 import PyPDF2
 import pytesseract
-from emergentintegrations.llm.chat import LlmChat, UserMessage
 import asyncio
+from contextlib import asynccontextmanager
+from google.genai import types
+import google.genai as genai
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -34,10 +36,18 @@ ACCESS_TOKEN_EXPIRE_DAYS = 30
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # AI Configuration
-EMERGENT_LLM_KEY = os.getenv('EMERGENT_LLM_KEY')
+GOOGLE_API_KEY = os.getenv('GOOGLE_API_KEY')
+
+# Lifespan context manager
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup logic
+    yield
+    # Shutdown logic
+    client.close()
 
 # Create the main app
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)
 api_router = APIRouter(prefix="/api")
 
 # Configure logging
@@ -148,24 +158,48 @@ def create_access_token(data: dict):
 async def get_ai_analysis(prompt: str, context: str = "") -> str:
     """Get AI analysis using Gemini Flash (fast + affordable)"""
     try:
-        chat = LlmChat(
-            api_key=EMERGENT_LLM_KEY,
-            session_id=str(uuid.uuid4()),
-            system_message="You are a senior Indian attorney with 25+ years of experience in criminal, civil, and corporate law. You specialize in IPC, CrPC, Indian Contract Act 1872, and landmark Supreme Court & High Court judgements. Always cite exact sections and relevant case precedents. Be precise, structured, and formal in legal drafting. When simplifying, use plain Indian English without losing legal accuracy."
-        ).with_model("gemini", "gemini-2.5-flash")
+        logger.debug(f"🔑 Google API Key configured: {bool(GOOGLE_API_KEY)}")
+        logger.debug(f"📏 Prompt length: {len(prompt)} characters")
+        
+        client = genai.Client(api_key=GOOGLE_API_KEY)
+        logger.debug("✅ Genai Client created")
         
         full_prompt = f"{context}\n\n{prompt}" if context else prompt
-        user_message = UserMessage(text=full_prompt)
-        response = await asyncio.wait_for(chat.send_message(user_message), timeout=45)
-        return response
+        logger.debug(f"🎯 Sending to Gemini 2.5 Flash model...")
+        
+        response = await asyncio.wait_for(
+            asyncio.to_thread(
+                client.models.generate_content,
+                model="gemini-2.5-flash",
+                contents=full_prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction="You are a senior Indian attorney with 25+ years of experience in criminal, civil, and corporate law. You specialize in IPC, CrPC, Indian Contract Act 1872, and landmark Supreme Court & High Court judgements. Always cite exact sections and relevant case precedents. Be precise, structured, and formal in legal drafting. When simplifying, use plain Indian English without losing legal accuracy."
+                )
+            ),
+            timeout=45
+        )
+        
+        logger.info(f"✨ AI response received ({len(response.text)} characters)")
+        logger.debug(f"📊 Response preview: {response.text[:150]}...")
+        return response.text
+        
     except asyncio.TimeoutError:
-        logger.error("AI analysis timed out after 45 seconds")
+        logger.error("⏰ AI analysis timed out after 45 seconds")
         raise HTTPException(status_code=504, detail="AI analysis timed out. Please try again.")
     except Exception as e:
-        logger.error(f"AI analysis error: {str(e)}")
-        if "Budget" in str(e):
-            raise HTTPException(status_code=402, detail="AI budget exceeded. Please add balance in Profile > Universal Key > Add Balance.")
-        raise HTTPException(status_code=500, detail=f"AI analysis failed: {str(e)}")
+        error_str = str(e)
+        logger.error(f"❌ AI analysis error: {error_str}", exc_info=True)
+        
+        if "Budget" in error_str or "quota" in error_str.lower():
+            logger.error("💳 API quota/budget issue detected")
+            raise HTTPException(status_code=402, detail="AI budget exceeded. Please check your API quota.")
+        
+        if "API key" in error_str or "authentication" in error_str.lower():
+            logger.error("🔐 API key authentication failed")
+            raise HTTPException(status_code=401, detail="Google API key configuration error. Check your credentials.")
+        
+        logger.error(f"🚨 Unexpected error type: {type(e).__name__}")
+        raise HTTPException(status_code=500, detail=f"AI analysis failed: {error_str}")
 
 def extract_text_from_pdf(file_content: bytes) -> str:
     """Extract text from PDF"""
@@ -323,6 +357,9 @@ async def analyze_case(
 ):
     """Analyze a legal case and provide strategy"""
     
+    # DEBUG: Log incoming request
+    logger.info(f"📨 Received case analysis request - User: {user_id}, Case: {case_title}")
+    
     lang_instruction = "Respond in Hinglish (Hindi words written in English script mixed with English). Make it conversational and easy to understand for a common Indian person." if language == "hinglish" else "Respond in clear, simple English."
     
     analysis_prompt = f"""As an expert in Indian law, analyze this case:
@@ -345,22 +382,40 @@ Respond ONLY with valid JSON (no markdown code blocks) with these exact keys:
   "loopholes": ["point1", "point2"]
 }}"""
     
-    analysis_result = await get_ai_analysis(analysis_prompt)
+    logger.debug(f"📝 Analysis prompt created (length: {len(analysis_prompt)})")
     
-    case_analysis = CaseAnalysis(
-        user_id=user_id,
-        case_title=case_title,
-        case_type=case_type,
-        case_description=case_description,
-        analysis=analysis_result
-    )
+    try:
+        # DEBUG: Log before calling AI
+        logger.info("🤖 Calling AI analysis...")
+        analysis_result = await get_ai_analysis(analysis_prompt)
+        logger.info(f"✅ AI analysis successful (response length: {len(analysis_result)})")
+        logger.debug(f"📄 AI response preview: {analysis_result[:200]}...")
+        
+        # DEBUG: Log before creating case object
+        logger.info("📋 Creating case analysis object...")
+        case_analysis = CaseAnalysis(
+            user_id=user_id,
+            case_title=case_title,
+            case_type=case_type,
+            case_description=case_description,
+            analysis=analysis_result
+        )
+        logger.info(f"✅ Case object created: {case_analysis.id}")
+        
+        # DEBUG: Log before database insert
+        logger.info("💾 Inserting case into database...")
+        await db.case_analyses.insert_one(case_analysis.dict())
+        logger.info(f"✅ Case saved to database: {case_analysis.id}")
+        
+        result = case_analysis.dict()
+        result.pop('_id', None)
+        
+        logger.info(f"✨ Case analysis complete and returned")
+        return result
     
-    await db.case_analyses.insert_one(case_analysis.dict())
-    
-    result = case_analysis.dict()
-    result.pop('_id', None)
-    
-    return result
+    except Exception as e:
+        logger.error(f"❌ Error in case analysis: {str(e)}", exc_info=True)
+        raise
 
 @api_router.get("/case/history/{user_id}")
 async def get_case_history(user_id: str):
@@ -600,7 +655,3 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-@app.on_event("shutdown")
-async def shutdown_db_client():
-    client.close()

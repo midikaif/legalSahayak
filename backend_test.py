@@ -10,8 +10,9 @@ import time
 import sys
 from typing import Dict, Any, Optional
 
-# Backend URL from frontend .env
-BACKEND_URL = "https://lawyer-helper-3.preview.emergentagent.com/api"
+# Backend URL - local development server
+# Point to http://localhost:8000 when running locally with: uvicorn server:app --reload
+BACKEND_URL = "http://localhost:8000/api"
 
 class LegalSahayakTester:
     def __init__(self):

@@ -1,38 +1,41 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   TextInput,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Alert,
-} from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import AnalysisRenderer from '../components/AnalysisRenderer';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import AnalysisRenderer from "../components/AnalysisRenderer";
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
 interface Message {
   id: string;
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
   created_at: string;
 }
 
 export default function CaseDetailScreen() {
-  const { caseId, caseTitle } = useLocalSearchParams<{ caseId: string; caseTitle: string }>();
+  const { caseId, caseTitle } = useLocalSearchParams<{
+    caseId: string;
+    caseTitle: string;
+  }>();
   const router = useRouter();
   const scrollRef = useRef<ScrollView>(null);
 
   const [caseData, setCaseData] = useState<any>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [newQuestion, setNewQuestion] = useState('');
+  const [newQuestion, setNewQuestion] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
 
@@ -50,7 +53,7 @@ export default function CaseDetailScreen() {
         setMessages(data.messages || []);
       }
     } catch (error) {
-      console.error('Error loading case detail:', error);
+      console.error("Error loading case detail:", error);
     } finally {
       setLoading(false);
     }
@@ -60,13 +63,13 @@ export default function CaseDetailScreen() {
     if (!newQuestion.trim()) return;
 
     const question = newQuestion.trim();
-    setNewQuestion('');
+    setNewQuestion("");
     setSending(true);
 
     // Optimistically add user message
     const tempUserMsg: Message = {
       id: `temp-${Date.now()}`,
-      role: 'user',
+      role: "user",
       content: question,
       created_at: new Date().toISOString(),
     };
@@ -77,11 +80,11 @@ export default function CaseDetailScreen() {
       const timeoutId = setTimeout(() => controller.abort(), 90000);
 
       const formData = new FormData();
-      formData.append('case_id', caseId || '');
-      formData.append('question', question);
+      formData.append("case_id", caseId || "");
+      formData.append("question", question);
 
       const response = await fetch(`${API_URL}/api/case/followup`, {
-        method: 'POST',
+        method: "POST",
         body: formData,
         signal: controller.signal,
       });
@@ -96,14 +99,14 @@ export default function CaseDetailScreen() {
           return [...filtered, data.user_message, data.ai_message];
         });
       } else {
-        Alert.alert('Error', data.detail || 'Failed to get response');
+        Alert.alert("Error", data.detail || "Failed to get response");
         setMessages((prev) => prev.filter((m) => m.id !== tempUserMsg.id));
       }
     } catch (error: any) {
-      if (error.name === 'AbortError') {
-        Alert.alert('Timeout', 'Response took too long. Please try again.');
+      if (error.name === "AbortError") {
+        Alert.alert("Timeout", "Response took too long. Please try again.");
       } else {
-        Alert.alert('Error', 'Network error. Please try again.');
+        Alert.alert("Error", "Network error. Please try again.");
       }
       setMessages((prev) => prev.filter((m) => m.id !== tempUserMsg.id));
     } finally {
@@ -127,28 +130,32 @@ export default function CaseDetailScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity testID="back-button" onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity
+          testID="back-button"
+          onPress={() => router.back()}
+          style={styles.backBtn}
+        >
           <Ionicons name="arrow-back" size={24} color="#1F2937" />
         </TouchableOpacity>
         <View style={styles.headerContent}>
           <Text style={styles.headerTitle} numberOfLines={1}>
-            {caseTitle || caseData?.case_title || 'Case Detail'}
+            {caseTitle || caseData?.case_title || "Case Detail"}
           </Text>
-          <Text style={styles.headerSubtitle}>
-            {caseData?.case_type} Case
-          </Text>
+          <Text style={styles.headerSubtitle}>{caseData?.case_type} Case</Text>
         </View>
       </View>
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={0}
       >
         <ScrollView
           ref={scrollRef}
           contentContainerStyle={styles.scrollContent}
-          onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}
+          onContentSizeChange={() =>
+            scrollRef.current?.scrollToEnd({ animated: false })
+          }
         >
           {/* Original Case Info */}
           <View style={styles.caseInfoCard}>
@@ -156,9 +163,17 @@ export default function CaseDetailScreen() {
               <Ionicons name="briefcase" size={20} color="#10B981" />
               <Text style={styles.caseInfoTitle}>Original Case</Text>
             </View>
-            <Text style={styles.caseInfoDesc}>{caseData?.case_description}</Text>
+            <Text style={styles.caseInfoDesc}>
+              {caseData?.case_description}
+            </Text>
             <Text style={styles.caseInfoDate}>
-              {caseData?.created_at ? new Date(caseData.created_at).toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' }) : ''}
+              {caseData?.created_at
+                ? new Date(caseData.created_at).toLocaleDateString("en-IN", {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })
+                : ""}
             </Text>
           </View>
 
@@ -167,7 +182,9 @@ export default function CaseDetailScreen() {
             <View style={styles.analysisSection}>
               <View style={styles.analysisSectionHeader}>
                 <Ionicons name="sparkles" size={20} color="#4F46E5" />
-                <Text style={styles.analysisSectionTitle}>AI Legal Analysis</Text>
+                <Text style={styles.analysisSectionTitle}>
+                  AI Legal Analysis
+                </Text>
               </View>
               <AnalysisRenderer rawAnalysis={caseData.analysis} />
             </View>
@@ -188,17 +205,17 @@ export default function CaseDetailScreen() {
               key={msg.id}
               style={[
                 styles.messageBubble,
-                msg.role === 'user' ? styles.userBubble : styles.aiBubble,
+                msg.role === "user" ? styles.userBubble : styles.aiBubble,
               ]}
             >
               <View style={styles.messageHeader}>
                 <Ionicons
-                  name={msg.role === 'user' ? 'person' : 'sparkles'}
+                  name={msg.role === "user" ? "person" : "sparkles"}
                   size={16}
-                  color={msg.role === 'user' ? '#4F46E5' : '#10B981'}
+                  color={msg.role === "user" ? "#4F46E5" : "#10B981"}
                 />
                 <Text style={styles.messageRole}>
-                  {msg.role === 'user' ? 'You' : 'AI Assistant'}
+                  {msg.role === "user" ? "You" : "AI Assistant"}
                 </Text>
               </View>
               <Text style={styles.messageContent}>{msg.content}</Text>
@@ -213,7 +230,9 @@ export default function CaseDetailScreen() {
               </View>
               <View style={styles.typingIndicator}>
                 <ActivityIndicator size="small" color="#10B981" />
-                <Text style={styles.typingText}>Analyzing your question...</Text>
+                <Text style={styles.typingText}>
+                  Analyzing your question...
+                </Text>
               </View>
             </View>
           )}
@@ -232,7 +251,10 @@ export default function CaseDetailScreen() {
           />
           <TouchableOpacity
             testID="send-followup-btn"
-            style={[styles.sendBtn, (!newQuestion.trim() || sending) && styles.sendBtnDisabled]}
+            style={[
+              styles.sendBtn,
+              (!newQuestion.trim() || sending) && styles.sendBtnDisabled,
+            ]}
             onPress={sendFollowUp}
             disabled={!newQuestion.trim() || sending}
           >
@@ -247,26 +269,26 @@ export default function CaseDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: "#F3F4F6",
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   loadingText: {
     marginTop: 12,
     fontSize: 16,
-    color: '#6B7280',
+    color: "#6B7280",
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: "#E5E7EB",
   },
   backBtn: {
     marginRight: 12,
@@ -277,12 +299,12 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#1F2937',
+    fontWeight: "700",
+    color: "#1F2937",
   },
   headerSubtitle: {
     fontSize: 13,
-    color: '#6B7280',
+    color: "#6B7280",
     marginTop: 2,
   },
   scrollContent: {
@@ -290,122 +312,122 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
   caseInfoCard: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
     borderLeftWidth: 4,
-    borderLeftColor: '#10B981',
+    borderLeftColor: "#10B981",
   },
   caseInfoHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 8,
   },
   caseInfoTitle: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#10B981',
+    fontWeight: "600",
+    color: "#10B981",
     marginLeft: 8,
   },
   caseInfoDesc: {
     fontSize: 14,
-    color: '#374151',
+    color: "#374151",
     lineHeight: 22,
   },
   caseInfoDate: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: "#9CA3AF",
     marginTop: 8,
   },
   analysisSection: {
     marginBottom: 16,
   },
   analysisSectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 12,
   },
   analysisSectionTitle: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#1F2937',
+    fontWeight: "700",
+    color: "#1F2937",
     marginLeft: 8,
   },
   chatDivider: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginVertical: 16,
   },
   chatDividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#D1D5DB',
+    backgroundColor: "#D1D5DB",
   },
   chatDividerText: {
     marginHorizontal: 12,
     fontSize: 13,
-    color: '#6B7280',
-    fontWeight: '500',
+    color: "#6B7280",
+    fontWeight: "500",
   },
   messageBubble: {
     borderRadius: 12,
     padding: 14,
     marginBottom: 10,
-    maxWidth: '92%',
+    maxWidth: "92%",
   },
   userBubble: {
-    backgroundColor: '#EEF2FF',
-    alignSelf: 'flex-end',
+    backgroundColor: "#EEF2FF",
+    alignSelf: "flex-end",
     borderBottomRightRadius: 4,
   },
   aiBubble: {
-    backgroundColor: '#fff',
-    alignSelf: 'flex-start',
+    backgroundColor: "#fff",
+    alignSelf: "flex-start",
     borderBottomLeftRadius: 4,
   },
   messageHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 6,
   },
   messageRole: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#6B7280',
+    fontWeight: "600",
+    color: "#6B7280",
     marginLeft: 6,
   },
   messageContent: {
     fontSize: 14,
-    color: '#1F2937',
+    color: "#1F2937",
     lineHeight: 22,
   },
   typingIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   typingText: {
     fontSize: 13,
-    color: '#6B7280',
+    color: "#6B7280",
     marginLeft: 8,
   },
   inputBar: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    backgroundColor: '#fff',
+    flexDirection: "row",
+    alignItems: "flex-end",
+    backgroundColor: "#fff",
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+    borderTopColor: "#E5E7EB",
   },
   chatInput: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: "#F3F4F6",
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 10,
     fontSize: 15,
-    color: '#1F2937',
+    color: "#1F2937",
     maxHeight: 100,
     marginRight: 8,
   },
@@ -413,11 +435,11 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#4F46E5',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#4F46E5",
+    justifyContent: "center",
+    alignItems: "center",
   },
   sendBtnDisabled: {
-    backgroundColor: '#C7D2FE',
+    backgroundColor: "#C7D2FE",
   },
 });

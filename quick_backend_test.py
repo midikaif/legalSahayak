@@ -7,8 +7,8 @@ import requests
 import json
 import sys
 
-# Backend URL - using local URL since external is timing out
-BACKEND_URL = "http://localhost:8001/api"
+# Backend URL - local development server running on port 8000
+BACKEND_URL = "http://localhost:8000/api"
 
 def test_basic_endpoints():
     """Test basic endpoints without AI analysis"""

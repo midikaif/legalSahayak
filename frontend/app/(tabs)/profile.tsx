@@ -1,16 +1,16 @@
-import React from 'react';
+import React from "react";
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
   Alert,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { useAuth } from '../../contexts/AuthContext';
-import { Ionicons } from '@expo/vector-icons';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
+import { useAuth } from "../../contexts/AuthContext";
+import { Ionicons } from "@expo/vector-icons";
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
@@ -18,20 +18,20 @@ export default function ProfileScreen() {
 
   const handleLogout = async () => {
     Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
+      "Logout",
+      "Are you sure you want to logout?",
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: "Cancel", style: "cancel" },
         {
-          text: 'Logout',
-          style: 'destructive',
+          text: "Logout",
+          style: "destructive",
           onPress: async () => {
             await logout();
-            router.replace('/(auth)/login');
+            router.replace("/(auth)/login");
           },
         },
       ],
-      { cancelable: true }
+      { cancelable: true },
     );
   };
 
@@ -45,7 +45,7 @@ export default function ProfileScreen() {
         <View style={styles.profileCard}>
           <View style={styles.avatarContainer}>
             <Ionicons
-              name={user?.user_type === 'lawyer' ? 'briefcase' : 'person'}
+              name={user?.user_type === "lawyer" ? "briefcase" : "person"}
               size={48}
               color="#4F46E5"
             />
@@ -54,7 +54,7 @@ export default function ProfileScreen() {
           <Text style={styles.userEmail}>{user?.email}</Text>
           <View style={styles.userTypeBadge}>
             <Text style={styles.userTypeText}>
-              {user?.user_type === 'lawyer' ? 'Lawyer' : 'Common User'}
+              {user?.user_type === "lawyer" ? "Lawyer" : "Common User"}
             </Text>
           </View>
         </View>
@@ -77,7 +77,7 @@ export default function ProfileScreen() {
               </View>
             )}
 
-            {user?.user_type === 'lawyer' && (
+            {user?.user_type === "lawyer" && (
               <>
                 {user.specialization && (
                   <View style={styles.infoRow}>
@@ -91,7 +91,9 @@ export default function ProfileScreen() {
                   <View style={styles.infoRow}>
                     <Ionicons name="card" size={20} color="#6B7280" />
                     <Text style={styles.infoLabel}>Bar Council</Text>
-                    <Text style={styles.infoValue}>{user.bar_council_number}</Text>
+                    <Text style={styles.infoValue}>
+                      {user.bar_council_number}
+                    </Text>
                   </View>
                 )}
 
@@ -99,7 +101,9 @@ export default function ProfileScreen() {
                   <View style={styles.infoRow}>
                     <Ionicons name="time" size={20} color="#6B7280" />
                     <Text style={styles.infoLabel}>Experience</Text>
-                    <Text style={styles.infoValue}>{user.years_of_experience} years</Text>
+                    <Text style={styles.infoValue}>
+                      {user.years_of_experience} years
+                    </Text>
                   </View>
                 )}
 
@@ -162,29 +166,29 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: "#F9FAFB",
   },
   header: {
     padding: 20,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: "#E5E7EB",
   },
   headerTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1F2937',
+    fontWeight: "bold",
+    color: "#1F2937",
   },
   content: {
     padding: 20,
   },
   profileCard: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 16,
     padding: 32,
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 24,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -194,23 +198,23 @@ const styles = StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: '#EEF2FF',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "#EEF2FF",
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: 16,
   },
   userName: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1F2937',
+    fontWeight: "bold",
+    color: "#1F2937",
   },
   userEmail: {
     fontSize: 14,
-    color: '#6B7280',
+    color: "#6B7280",
     marginTop: 4,
   },
   userTypeBadge: {
-    backgroundColor: '#EEF2FF',
+    backgroundColor: "#EEF2FF",
     borderRadius: 20,
     paddingVertical: 8,
     paddingHorizontal: 16,
@@ -218,86 +222,86 @@ const styles = StyleSheet.create({
   },
   userTypeText: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#4F46E5',
+    fontWeight: "600",
+    color: "#4F46E5",
   },
   section: {
     marginBottom: 24,
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
+    fontWeight: "600",
+    color: "#1F2937",
     marginBottom: 12,
   },
   infoCard: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 16,
     padding: 16,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 3,
   },
   infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: "#F3F4F6",
   },
   infoLabel: {
     flex: 1,
     marginLeft: 12,
     fontSize: 14,
-    color: '#6B7280',
+    color: "#6B7280",
   },
   infoValue: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#1F2937',
+    fontWeight: "500",
+    color: "#1F2937",
   },
   menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    borderBottomColor: "#F3F4F6",
   },
   menuText: {
     flex: 1,
     marginLeft: 12,
     fontSize: 16,
-    color: '#1F2937',
+    color: "#1F2937",
   },
   logoutButton: {
-    flexDirection: 'row',
-    backgroundColor: '#EF4444',
+    flexDirection: "row",
+    backgroundColor: "#EF4444",
     borderRadius: 12,
     padding: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginTop: 8,
   },
   logoutButtonText: {
     marginLeft: 8,
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   versionContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 32,
     marginBottom: 16,
   },
   versionText: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: "#9CA3AF",
   },
   copyrightText: {
     fontSize: 12,
-    color: '#D1D5DB',
+    color: "#D1D5DB",
     marginTop: 4,
   },
 });
