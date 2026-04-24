@@ -96,9 +96,17 @@ export default function ContractScreen() {
           formData.append("document_type", "image");
           fileContent = `data:image/jpeg;base64,${selectedFile.base64}`;
         } else if (selectedFile.uri) {
-          // For PDF or other files, read as base64
-          const base64 = await FileSystem.readAsStringAsync(selectedFile.uri, {
-            encoding: FileSystem.EncodingType.Base64,
+          // Modern standard web API approach to replace deprecated FileSystem method
+          const response = await fetch(selectedFile.uri);
+          const blob = await response.blob();
+          const base64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+              const dataUrl = reader.result as string;
+              resolve(dataUrl.split(',')[1]);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
           });
           formData.append("document_type", "pdf");
           fileContent = `data:application/pdf;base64,${base64}`;

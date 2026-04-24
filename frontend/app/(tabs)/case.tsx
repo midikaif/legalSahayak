@@ -15,7 +15,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { Picker } from "@react-native-picker/picker";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
-import * as FileSystem from "expo-file-system";
 import AnalysisLoader from "../../components/AnalysisLoader";
 import AnalysisRenderer from "../../components/AnalysisRenderer";
 
@@ -157,8 +156,16 @@ export default function CaseScreen() {
           `data:image/jpeg;base64,${selectedFile.base64}`,
         );
       } else if (selectedFile.uri) {
-        const base64 = await FileSystem.readAsStringAsync(selectedFile.uri, {
-          encoding: FileSystem.EncodingType.Base64,
+        const response = await fetch(selectedFile.uri);
+        const blob = await response.blob();
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const dataUrl = reader.result as string;
+            resolve(dataUrl.split(",")[1]);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
         });
         formData.append("document_type", "pdf");
         formData.append(
