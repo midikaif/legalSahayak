@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -17,6 +16,7 @@ import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import AnalysisLoader from "../../components/AnalysisLoader";
 import AnalysisRenderer from "../../components/AnalysisRenderer";
+import { showAlert } from "@/utils/alert";
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -50,7 +50,7 @@ export default function CaseScreen() {
 
   const analyzeCase = async () => {
     if (!caseTitle || !caseDescription) {
-      Alert.alert(
+      showAlert(
         "Missing Information",
         "Please fill in both the case title and description.",
       );
@@ -84,19 +84,19 @@ export default function CaseScreen() {
         setCaseTitle("");
         setCaseDescription("");
       } else {
-        Alert.alert(
+        showAlert(
           "Analysis Failed",
           data.detail || "Could not analyze the case. Please try again.",
         );
       }
     } catch (error: any) {
       if (error.name === "AbortError") {
-        Alert.alert(
+        showAlert(
           "Taking Too Long",
           "The analysis is taking longer than expected. Please try again with a shorter description.",
         );
       } else {
-        Alert.alert(
+        showAlert(
           "Connection Error",
           "Could not connect to the server. Please check your internet connection.",
         );
@@ -115,14 +115,14 @@ export default function CaseScreen() {
         setSelectedFile(result.assets[0]);
       }
     } catch (error) {
-      Alert.alert("Error", "Failed to pick document");
+      showAlert("Error", "Failed to pick document");
     }
   };
 
   const pickImage = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ["images"],
         quality: 1,
         base64: true,
       });
@@ -130,13 +130,13 @@ export default function CaseScreen() {
         setSelectedFile({ ...result.assets[0], type: "image" });
       }
     } catch (error) {
-      Alert.alert("Error", "Failed to pick image");
+      showAlert("Error", "Failed to pick image");
     }
   };
 
   const analyzeDocument = async () => {
     if (!selectedFile) {
-      Alert.alert("No Document", "Please select a document to analyze.");
+      showAlert("No Document", "Please select a document to analyze.");
       return;
     }
 
@@ -187,19 +187,19 @@ export default function CaseScreen() {
         setAnalysis(data);
         setSelectedFile(null);
       } else {
-        Alert.alert(
+        showAlert(
           "Analysis Failed",
           data.detail || "Could not analyze the document.",
         );
       }
     } catch (error: any) {
       if (error.name === "AbortError") {
-        Alert.alert(
+        showAlert(
           "Taking Too Long",
           "Document analysis timed out. Please try again.",
         );
       } else {
-        Alert.alert("Connection Error", "Could not connect to the server.");
+        showAlert("Connection Error", "Could not connect to the server.");
       }
     } finally {
       setLoading(false);
@@ -236,13 +236,13 @@ export default function CaseScreen() {
       if (response.ok) {
         setProcedure(data);
       } else {
-        Alert.alert("Error", data.detail || "Could not load procedure.");
+        showAlert("Error", data.detail || "Could not load procedure.");
       }
     } catch (error: any) {
       if (error.name === "AbortError") {
-        Alert.alert("Timeout", "Loading procedure took too long.");
+        showAlert("Timeout", "Loading procedure took too long.");
       } else {
-        Alert.alert("Error", "Could not connect to the server.");
+        showAlert("Error", "Could not connect to the server.");
       }
     } finally {
       setLoading(false);

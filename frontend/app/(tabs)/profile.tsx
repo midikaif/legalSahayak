@@ -5,34 +5,45 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useAuth } from "../../contexts/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
+import { showAlert } from "@/utils/alert";
 
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
   const router = useRouter();
 
   const handleLogout = async () => {
-    Alert.alert(
-      "Logout",
-      "Are you sure you want to logout?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Logout",
-          style: "destructive",
-          onPress: async () => {
-            await logout();
-            router.replace("/(auth)/login");
+    console.log("LOGOUT");
+
+    if (Platform.OS === "web") {
+      const confirmed = window.confirm("Are you sure you want to logout?");
+      if (confirmed) {
+        await logout();
+        router.replace("/(auth)/login");
+      }
+    } else {
+      showAlert(
+        "Logout",
+        "Are you sure you want to logout?",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Logout",
+            style: "destructive",
+            onPress: async () => {
+              await logout();
+              router.replace("/(auth)/login");
+            },
           },
-        },
-      ],
-      { cancelable: true },
-    );
+        ],
+        { cancelable: true },
+      );
+    }
   };
 
   return (

@@ -303,7 +303,8 @@ async def analyze_contract(
     document_name: str = Form(...),
     document_type: str = Form(...),
     text_content: Optional[str] = Form(None),
-    file_content: Optional[str] = Form(None)
+    file_content: Optional[str] = Form(None),
+    language: str = Form("english")
 ):
     """Analyze a legal contract/document"""
     
@@ -322,17 +323,25 @@ async def analyze_contract(
     if not original_text or len(original_text.strip()) < 10:
         raise HTTPException(status_code=400, detail="Could not extract text from document")
     
-    # AI Analysis
-    simplification_prompt = f"""Analyze this legal document and provide:
-1. A simplified version in plain Hindi/English that a common person can understand
-2. Key points and important clauses
-3. Potential risks or unfavorable terms
-4. Legal terms explained in simple language
+    lang_instruction = "Respond in Hinglish (Hindi words written in English script mixed with English). Make it conversational and easy to understand for a common Indian person." if language == "hinglish" else "Respond in clear, simple English."
+
+    simplification_prompt = f"""Analyze this legal contract/document and provide a structured JSON response. Focus on identifying red flags, key obligations, and explaining legal jargon. Use **bold** markdown for important terms within the text.
+
+{lang_instruction}
 
 Document:
-{original_text}
+{original_text[:15000]}
 
-Provide the response in JSON format with keys: simplified_text, key_points (array), risks (array), legal_terms (object with term as key and explanation as value)"""
+Respond ONLY with valid JSON (no markdown code blocks, no extra text) with these exact keys:
+{{
+  "simplified_text": "A comprehensive summary of the contract in the requested language.",
+  "risks": ["Red flag 1 with **bold** terms", "Hidden fee or risk 2"],
+  "key_points": ["Obligation 1", "Key right 2"],
+  "legal_terms": {{
+    "Term 1": "Simple explanation",
+    "Term 2": "Simple explanation"
+  }}
+}}"""
     
     analysis_result = await get_ai_analysis(simplification_prompt)
     

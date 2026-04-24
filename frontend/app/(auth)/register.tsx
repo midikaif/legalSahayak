@@ -15,6 +15,7 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
+import {showAlert} from '@/utils/alert';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -35,7 +36,7 @@ export default function RegisterScreen() {
 
   const handleRegister = async () => {
     if (!email || !password || !fullName) {
-      Alert.alert('Error', 'Please fill all required fields');
+      showAlert('Error', 'Please fill all required fields');
       return;
     }
 
@@ -69,10 +70,10 @@ export default function RegisterScreen() {
         await login(data.access_token, data.user);
         router.replace('/(tabs)/home');
       } else {
-        Alert.alert('Registration Failed', data.detail || 'Please try again');
+        showAlert('Registration Failed', data.detail || 'Please try again');
       }
     } catch (error) {
-      Alert.alert('Error', 'Network error. Please try again.');
+      showAlert('Error', 'Network error. Please try again.');
       console.error(error);
     } finally {
       setLoading(false);

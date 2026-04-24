@@ -15,6 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import AnalysisRenderer from "../components/AnalysisRenderer";
+import { showAlert } from "@/utils/alert";
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -99,14 +100,14 @@ export default function CaseDetailScreen() {
           return [...filtered, data.user_message, data.ai_message];
         });
       } else {
-        Alert.alert("Error", data.detail || "Failed to get response");
+        showAlert("Error", data.detail || "Failed to get response");
         setMessages((prev) => prev.filter((m) => m.id !== tempUserMsg.id));
       }
     } catch (error: any) {
       if (error.name === "AbortError") {
-        Alert.alert("Timeout", "Response took too long. Please try again.");
+        showAlert("Timeout", "Response took too long. Please try again.");
       } else {
-        Alert.alert("Error", "Network error. Please try again.");
+        showAlert("Error", "Network error. Please try again.");
       }
       setMessages((prev) => prev.filter((m) => m.id !== tempUserMsg.id));
     } finally {

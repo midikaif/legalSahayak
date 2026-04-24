@@ -14,13 +14,16 @@ import { useAuth } from "../../contexts/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
-import * as FileSystem from "expo-file-system";
+import AnalysisLoader from "../../components/AnalysisLoader";
+import ContractAnalysisRenderer from "../../components/ContractAnalysisRenderer";
+import { showAlert } from "@/utils/alert";
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
 export default function ContractScreen() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<"analyze" | "history">("analyze");
+  const [language, setLanguage] = useState<"english" | "hinglish">("english");
   const [textInput, setTextInput] = useState("");
   const [documentName, setDocumentName] = useState("");
   const [selectedFile, setSelectedFile] = useState<any>(null);
@@ -38,18 +41,18 @@ export default function ContractScreen() {
         const file = result.assets[0];
         setSelectedFile(file);
         setDocumentName(file.name);
-        Alert.alert("Success", "Document selected");
+        showAlert("Success", "Document selected");
       }
     } catch (error) {
       console.error("Error picking document:", error);
-      Alert.alert("Error", "Failed to pick document");
+      showAlert("Error", "Failed to pick document");
     }
   };
 
   const pickImage = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         quality: 1,
         base64: true,
       });
@@ -61,22 +64,22 @@ export default function ContractScreen() {
           type: "image",
         });
         setDocumentName("Image_" + Date.now());
-        Alert.alert("Success", "Image selected");
+        showAlert("Success", "Image selected");
       }
     } catch (error) {
       console.error("Error picking image:", error);
-      Alert.alert("Error", "Failed to pick image");
+      showAlert("Error", "Failed to pick image");
     }
   };
 
   const analyzeContract = async () => {
     if (!documentName) {
-      Alert.alert("Error", "Please provide a document name");
+      showAlert("Error", "Please provide a document name");
       return;
     }
 
     if (!textInput && !selectedFile) {
-      Alert.alert("Error", "Please provide text or select a document");
+      showAlert("Error", "Please provide text or select a document");
       return;
     }
 
@@ -85,6 +88,7 @@ export default function ContractScreen() {
       const formData = new FormData();
       formData.append("user_id", user?.id || "");
       formData.append("document_name", documentName);
+      formData.append("language", language);
 
       if (textInput) {
         formData.append("document_type", "text");
@@ -103,7 +107,7 @@ export default function ContractScreen() {
             const reader = new FileReader();
             reader.onload = () => {
               const dataUrl = reader.result as string;
-              resolve(dataUrl.split(',')[1]);
+              resolve(dataUrl.split(",")[1]);
             };
             reader.onerror = reject;
             reader.readAsDataURL(blob);
@@ -129,25 +133,19 @@ export default function ContractScreen() {
 
       if (response.ok) {
         setAnalysis(data);
-        Alert.alert("Success", "Contract analyzed successfully");
+        showAlert("Success", "Contract analyzed successfully");
         setTextInput("");
         setSelectedFile(null);
         setDocumentName("");
       } else {
-        Alert.alert(
-          "Error",
-          data.detail || "Analysis failed. Please try again.",
-        );
+        showAlert("Error", data.detail || "Analysis failed. Please try again.");
       }
     } catch (error: any) {
       console.error("Error analyzing contract:", error);
       if (error.name === "AbortError") {
-        Alert.alert(
-          "Timeout",
-          "Analysis is taking too long. Please try again.",
-        );
+        showAlert("Timeout", "Analysis is taking too long. Please try again.");
       } else {
-        Alert.alert("Error", "Network error. Please try again.");
+        showAlert("Error", "Network error. Please try again.");
       }
     } finally {
       setLoading(false);
@@ -182,6 +180,7 @@ export default function ContractScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <AnalysisLoader isVisible={loading} estimatedTime={20} />
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Contract Analysis</Text>
         <Text style={styles.headerSubtitle}>Simplify legal documents</Text>
@@ -266,42 +265,66 @@ export default function ContractScreen() {
               </View>
             )}
 
+            <View style={styles.languageToggle}>
+              <Text style={styles.label}>Response Language</Text>
+              <View style={styles.langButtons}>
+                <TouchableOpacity
+                  style={[
+                    styles.langBtn,
+                    language === "english" && styles.langBtnActive,
+                  ]}
+                  onPress={() => setLanguage("english")}
+                >
+                  <Text
+                    style={[
+                      styles.langBtnText,
+                      language === "english" && styles.langBtnTextActive,
+                    ]}
+                  >
+                    English
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.langBtn,
+                    language === "hinglish" && styles.langBtnActive,
+                  ]}
+                  onPress={() => setLanguage("hinglish")}
+                >
+                  <Text
+                    style={[
+                      styles.langBtnText,
+                      language === "hinglish" && styles.langBtnTextActive,
+                    ]}
+                  >
+                    Hinglish
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
             <TouchableOpacity
               style={styles.analyzeButton}
               onPress={analyzeContract}
               disabled={loading}
             >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <>
-                  <Ionicons name="search" size={20} color="#fff" />
-                  <Text style={styles.analyzeButtonText}>Analyze Contract</Text>
-                </>
-              )}
+              <Ionicons name="search" size={20} color="#fff" />
+              <Text style={styles.analyzeButtonText}>Analyze Contract</Text>
             </TouchableOpacity>
 
-            {analysis && (
-              <View style={styles.analysisCard}>
-                <Text style={styles.analysisTitle}>Analysis Result</Text>
-                <View style={styles.analysisContent}>
-                  <Text style={styles.analysisLabel}>Simplified Version:</Text>
-                  <Text style={styles.analysisText}>
-                    {analysis.simplified_text}
-                  </Text>
+            {analysis && !loading && (
+              <View style={styles.resultSection}>
+                <View style={styles.resultHeader}>
+                  <Ionicons name="sparkles" size={20} color="#4F46E5" />
+                  <Text style={styles.resultTitle}>Analysis Result</Text>
                 </View>
+                <ContractAnalysisRenderer rawAnalysis={analysis.simplified_text} />
               </View>
             )}
           </View>
         ) : (
           <View>
-            {loading ? (
-              <ActivityIndicator
-                size="large"
-                color="#4F46E5"
-                style={{ marginTop: 40 }}
-              />
-            ) : history.length === 0 ? (
+            {history.length === 0 ? (
               <View style={styles.emptyState}>
                 <Ionicons
                   name="document-text-outline"
@@ -317,7 +340,10 @@ export default function ContractScreen() {
                 <TouchableOpacity
                   key={item.id}
                   style={styles.historyCard}
-                  onPress={() => setAnalysis(item)}
+                  onPress={() => {
+                    setAnalysis(item);
+                    setActiveTab("analyze");
+                  }}
                 >
                   <View style={styles.historyHeader}>
                     <Ionicons name="document-text" size={24} color="#4F46E5" />
@@ -458,35 +484,20 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
-  analysisCard: {
-    backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+  resultSection: {
+    marginTop: 8,
   },
-  analysisTitle: {
+  resultHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  resultTitle: {
     fontSize: 18,
-    fontWeight: "bold",
+    fontWeight: "700",
     color: "#1F2937",
-    marginBottom: 16,
-  },
-  analysisContent: {
-    marginBottom: 16,
-  },
-  analysisLabel: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#4F46E5",
-    marginBottom: 8,
-  },
-  analysisText: {
-    fontSize: 14,
-    color: "#374151",
-    lineHeight: 22,
+    marginLeft: 8,
+    flex: 1,
   },
   emptyState: {
     alignItems: "center",
@@ -525,5 +536,33 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#6B7280",
     marginTop: 4,
+  },
+  languageToggle: {
+    marginBottom: 20,
+  },
+  langButtons: {
+    flexDirection: "row",
+  },
+  langBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    marginRight: 8,
+    borderRadius: 12,
+  },
+  langBtnActive: {
+    backgroundColor: "#4F46E5",
+    borderColor: "#4F46E5",
+  },
+  langBtnText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#6B7280",
+  },
+  langBtnTextActive: {
+    color: "#fff",
   },
 });

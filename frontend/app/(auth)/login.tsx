@@ -14,6 +14,7 @@ import {
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
+import { showAlert } from '@/utils/alert';
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 
@@ -26,7 +27,7 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Please fill all fields');
+      showAlert('Error', 'Please fill all fields');
       return;
     }
 
@@ -44,10 +45,10 @@ export default function LoginScreen() {
         await login(data.access_token, data.user);
         router.replace('/(tabs)/home');
       } else {
-        Alert.alert('Login Failed', data.detail || 'Invalid credentials');
+        showAlert('Login Failed', data.detail || 'Invalid credentials');
       }
     } catch (error) {
-      Alert.alert('Error', 'Network error. Please try again.');
+      showAlert('Error', 'Network error. Please try again.');
       console.error(error);
     } finally {
       setLoading(false);
