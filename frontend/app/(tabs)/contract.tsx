@@ -14,8 +14,6 @@ import { useAuth } from "../../contexts/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
-import AnalysisLoader from "../../components/AnalysisLoader";
-import ContractAnalysisRenderer from "../../components/ContractAnalysisRenderer";
 import { showAlert } from "@/utils/alert";
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
@@ -23,7 +21,6 @@ const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
 export default function ContractScreen() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<"analyze" | "history">("analyze");
-  const [language, setLanguage] = useState<"english" | "hinglish">("english");
   const [textInput, setTextInput] = useState("");
   const [documentName, setDocumentName] = useState("");
   const [selectedFile, setSelectedFile] = useState<any>(null);
@@ -88,7 +85,6 @@ export default function ContractScreen() {
       const formData = new FormData();
       formData.append("user_id", user?.id || "");
       formData.append("document_name", documentName);
-      formData.append("language", language);
 
       if (textInput) {
         formData.append("document_type", "text");
@@ -180,7 +176,6 @@ export default function ContractScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <AnalysisLoader isVisible={loading} estimatedTime={20} />
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Contract Analysis</Text>
         <Text style={styles.headerSubtitle}>Simplify legal documents</Text>
@@ -265,66 +260,42 @@ export default function ContractScreen() {
               </View>
             )}
 
-            <View style={styles.languageToggle}>
-              <Text style={styles.label}>Response Language</Text>
-              <View style={styles.langButtons}>
-                <TouchableOpacity
-                  style={[
-                    styles.langBtn,
-                    language === "english" && styles.langBtnActive,
-                  ]}
-                  onPress={() => setLanguage("english")}
-                >
-                  <Text
-                    style={[
-                      styles.langBtnText,
-                      language === "english" && styles.langBtnTextActive,
-                    ]}
-                  >
-                    English
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.langBtn,
-                    language === "hinglish" && styles.langBtnActive,
-                  ]}
-                  onPress={() => setLanguage("hinglish")}
-                >
-                  <Text
-                    style={[
-                      styles.langBtnText,
-                      language === "hinglish" && styles.langBtnTextActive,
-                    ]}
-                  >
-                    Hinglish
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
             <TouchableOpacity
               style={styles.analyzeButton}
               onPress={analyzeContract}
               disabled={loading}
             >
-              <Ionicons name="search" size={20} color="#fff" />
-              <Text style={styles.analyzeButtonText}>Analyze Contract</Text>
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="search" size={20} color="#fff" />
+                  <Text style={styles.analyzeButtonText}>Analyze Contract</Text>
+                </>
+              )}
             </TouchableOpacity>
 
-            {analysis && !loading && (
-              <View style={styles.resultSection}>
-                <View style={styles.resultHeader}>
-                  <Ionicons name="sparkles" size={20} color="#4F46E5" />
-                  <Text style={styles.resultTitle}>Analysis Result</Text>
+            {analysis && (
+              <View style={styles.analysisCard}>
+                <Text style={styles.analysisTitle}>Analysis Result</Text>
+                <View style={styles.analysisContent}>
+                  <Text style={styles.analysisLabel}>Simplified Version:</Text>
+                  <Text style={styles.analysisText}>
+                    {analysis.simplified_text}
+                  </Text>
                 </View>
-                <ContractAnalysisRenderer rawAnalysis={analysis.simplified_text} />
               </View>
             )}
           </View>
         ) : (
           <View>
-            {history.length === 0 ? (
+            {loading ? (
+              <ActivityIndicator
+                size="large"
+                color="#4F46E5"
+                style={{ marginTop: 40 }}
+              />
+            ) : history.length === 0 ? (
               <View style={styles.emptyState}>
                 <Ionicons
                   name="document-text-outline"
@@ -340,10 +311,7 @@ export default function ContractScreen() {
                 <TouchableOpacity
                   key={item.id}
                   style={styles.historyCard}
-                  onPress={() => {
-                    setAnalysis(item);
-                    setActiveTab("analyze");
-                  }}
+                  onPress={() => setAnalysis(item)}
                 >
                   <View style={styles.historyHeader}>
                     <Ionicons name="document-text" size={24} color="#4F46E5" />
@@ -484,20 +452,35 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
-  resultSection: {
-    marginTop: 8,
+  analysisCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  resultHeader: {
-    flexDirection: "row",
-    alignItems: "center",
+  analysisTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#1F2937",
     marginBottom: 16,
   },
-  resultTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#1F2937",
-    marginLeft: 8,
-    flex: 1,
+  analysisContent: {
+    marginBottom: 16,
+  },
+  analysisLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#4F46E5",
+    marginBottom: 8,
+  },
+  analysisText: {
+    fontSize: 14,
+    color: "#374151",
+    lineHeight: 22,
   },
   emptyState: {
     alignItems: "center",
@@ -536,33 +519,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#6B7280",
     marginTop: 4,
-  },
-  languageToggle: {
-    marginBottom: 20,
-  },
-  langButtons: {
-    flexDirection: "row",
-  },
-  langBtn: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: "center",
-    backgroundColor: "#fff",
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    marginRight: 8,
-    borderRadius: 12,
-  },
-  langBtnActive: {
-    backgroundColor: "#4F46E5",
-    borderColor: "#4F46E5",
-  },
-  langBtnText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#6B7280",
-  },
-  langBtnTextActive: {
-    color: "#fff",
   },
 });

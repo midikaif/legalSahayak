@@ -142,8 +142,24 @@ export default function AnalysisRenderer({ rawAnalysis }: Props) {
   if (!parsed) {
     return (
       <View style={styles.container}>
-        <View style={styles.richTextCard}>
-          {renderRichText(rawAnalysis)}
+        <View style={styles.richTextCard}>{renderRichText(rawAnalysis)}</View>
+        <View
+          style={{
+            marginTop: 8,
+            padding: 8,
+            backgroundColor: "#FFF3CD",
+            borderRadius: 6,
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 11,
+              color: "#856404",
+            }}
+          >
+            ⚠️ AI-generated content. Verify all citations, IPC sections, and
+            case references before use in any legal proceeding.
+          </Text>
         </View>
       </View>
     );

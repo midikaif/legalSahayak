@@ -115,6 +115,19 @@ export default function HomeScreen() {
             documents, contracts, and correspondence for your records.
           </Text>
         </View>
+
+        <Text
+          style={{
+            textAlign: "center",
+            fontSize: 10,
+            color: "#888",
+            padding: 12,
+          }}
+        >
+          LegalSahayak is a legal research and drafting assistant for
+          informational purposes only. It does not constitute legal advice.
+          Always consult a qualified advocate for final legal decisions.
+        </Text>
       </ScrollView>
     </SafeAreaView>
   );
