@@ -6,7 +6,8 @@ python-dotenv==1.2.2
 
 # Database
 motor==3.3.1
-pymongo==4.5.0
+pymongo[srv]==4.5.0
+dnspython==2.4.2
 
 # AI & ML
 google-genai==1.71.0
