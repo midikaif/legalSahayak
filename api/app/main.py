@@ -1,8 +1,10 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from starlette.middleware.cors import CORSMiddleware
 import logging
 from datetime import datetime
 from contextlib import asynccontextmanager
+import traceback
 
 from app.core.database import client
 from app.routers import auth, contract, case, procedure, lawyer, draft
@@ -10,6 +12,25 @@ from app.routers import auth, contract, case, procedure, lawyer, draft
 app = FastAPI()
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    error_msg = f"Global exception handler caught: {exc}"
+    logger.error(error_msg)
+    
+    # Extract full traceback
+    tb_str = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+    logger.error(f"Traceback: {tb_str}")
+    
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": "Internal Server Error",
+            "error_message": str(exc),
+            "traceback": tb_str
+        },
+    )
 
 app.add_middleware(
     CORSMiddleware,
