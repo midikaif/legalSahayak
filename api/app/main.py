@@ -18,7 +18,7 @@ app.add_middleware(
         "https://legal-sahayak-ten.vercel.app",
         "http://localhost:8081",
         "http://127.0.0.1:8081"
-    ],   
+    ],
     allow_methods=["*"],
     allow_headers=["*"],
 )
