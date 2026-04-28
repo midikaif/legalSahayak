@@ -12,7 +12,7 @@ import {
   Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from "@/contexts/AuthContext";
 import { Ionicons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import {showAlert} from '@/utils/alert';
@@ -89,7 +89,7 @@ export default function RegisterScreen() {
         <View style={styles.header}>
           <Ionicons name="scale" size={48} color="#4F46E5" />
           <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Join LegalSahayak</Text>
+          <Text style={styles.subtitle}>Join VakeelIt</Text>
         </View>
 
         <View style={styles.form}>

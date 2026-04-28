@@ -1,8 +1,8 @@
-# LegalSahayak - Product Requirements Document
+# VakeelIt - Product Requirements Document
 
 ## Overview
 
-LegalSahayak is a mobile app that simplifies legal contracts, provides case analysis, step-by-step legal procedures, and connects users with lawyers. Focused on the Indian legal system.
+VakeelIt is a mobile app that simplifies legal contracts, provides case analysis, step-by-step legal procedures, and connects users with lawyers. Focused on the Indian legal system.
 
 ## User Types
 

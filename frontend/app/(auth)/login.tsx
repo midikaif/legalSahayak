@@ -12,7 +12,7 @@ import {
   Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from "@/contexts/AuthContext";
 import { Ionicons } from '@expo/vector-icons';
 import { showAlert } from '@/utils/alert';
 
@@ -63,7 +63,7 @@ export default function LoginScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <Ionicons name="scale" size={60} color="#4F46E5" />
-          <Text style={styles.title}>LegalSahayak</Text>
+          <Text style={styles.title}>VakeelIt</Text>
           <Text style={styles.subtitle}>Your Legal Assistant</Text>
         </View>
 

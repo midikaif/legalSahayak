@@ -14,7 +14,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import AnalysisRenderer from "../components/AnalysisRenderer";
+import AnalysisRenderer from "@/components/AnalysisRenderer";
 import { showAlert } from "@/utils/alert";
 
 const API_URL = process.env.EXPO_PUBLIC_BACKEND_URL;

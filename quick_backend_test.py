@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Quick Backend API Tests for LegalSahayak - Basic functionality only
+Quick Backend API Tests for VakeelIt - Basic functionality only
 """
 
 import requests
@@ -14,7 +14,7 @@ def test_basic_endpoints():
     """Test basic endpoints without AI analysis"""
     results = []
     
-    print("🚀 Testing LegalSahayak Backend API")
+    print("🚀 Testing VakeelIt Backend API")
     print(f"Backend URL: {BACKEND_URL}")
     print("=" * 50)
     

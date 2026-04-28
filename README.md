@@ -1,6 +1,6 @@
-# ⚖️ LegalSahayak - AI-Powered Legal Assistant
+# ⚖️ VakeelIt - AI-Powered Legal Assistant
 
-An intelligent, cross-platform legal tech application built specifically for the **Indian Legal System**. LegalSahayak bridges the gap between complex legal jargon and common users by providing automated document analysis, case strategy generation, and step-by-step legal procedures.
+An intelligent, cross-platform legal tech application built specifically for the **Indian Legal System**. VakeelIt bridges the gap between complex legal jargon and common users by providing automated document analysis, case strategy generation, and step-by-step legal procedures.
 
 ---
 
@@ -62,7 +62,7 @@ Ensure your Python environment is set up and MongoDB is running.
 ```bash
 cd api
 pip install -r requirements.txt
-uvicorn index:app --reload --port 8000
+uvicorn app.main:app --reload --port 8000
 ```
 
 ### 2. Start the Frontend
@@ -73,4 +73,4 @@ npm install
 npx expo start
 ```
 
-> **Disclaimer:** LegalSahayak is a legal research and drafting assistant for informational purposes only. It does not constitute legal advice. Always consult a qualified advocate for final legal decisions.
+> **Disclaimer:** VakeelIt is a legal research and drafting assistant for informational purposes only. It does not constitute legal advice. Always consult a qualified advocate for final legal decisions.

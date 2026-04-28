@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Comprehensive Backend API Tests for LegalSahayak
+Comprehensive Backend API Tests for VakeelIt
 Tests all endpoints as specified in the review request
 """
 
@@ -14,7 +14,7 @@ from typing import Dict, Any, Optional
 # Point to http://localhost:8000 when running locally with: uvicorn server:app --reload
 BACKEND_URL = "http://localhost:8000/api"
 
-class LegalSahayakTester:
+class VakeelItTester:
     def __init__(self):
         self.base_url = BACKEND_URL
         self.session = requests.Session()
@@ -256,7 +256,7 @@ class LegalSahayakTester:
     
     def run_all_tests(self):
         """Run all tests in sequence"""
-        print("🚀 Starting LegalSahayak Backend API Tests")
+        print("🚀 Starting VakeelIt Backend API Tests")
         print(f"Backend URL: {self.base_url}")
         print("=" * 60)
         
@@ -296,6 +296,6 @@ class LegalSahayakTester:
         return passed == total
 
 if __name__ == "__main__":
-    tester = LegalSahayakTester()
+    tester = VakeelItTester()
     success = tester.run_all_tests()
     sys.exit(0 if success else 1)

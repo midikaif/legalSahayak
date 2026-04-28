@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Comprehensive Backend API Tests for LegalSahayak
+Comprehensive Backend API Tests for VakeelIt
 Handles existing users and tests all functionality
 """
 
@@ -17,7 +17,7 @@ def test_comprehensive_backend():
     """Test all backend functionality comprehensively"""
     results = []
     
-    print("🚀 Comprehensive LegalSahayak Backend API Tests")
+    print("🚀 Comprehensive VakeelIt Backend API Tests")
     print(f"Backend URL: {BACKEND_URL}")
     print("=" * 60)
     

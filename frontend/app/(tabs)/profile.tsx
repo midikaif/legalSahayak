@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 import { showAlert } from "@/utils/alert";
 
@@ -136,7 +136,7 @@ export default function ProfileScreen() {
           <View style={styles.infoCard}>
             <TouchableOpacity style={styles.menuItem}>
               <Ionicons name="information-circle" size={24} color="#4F46E5" />
-              <Text style={styles.menuText}>About LegalSahayak</Text>
+              <Text style={styles.menuText}>About VakeelIt</Text>
               <Ionicons name="chevron-forward" size={20} color="#D1D5DB" />
             </TouchableOpacity>
 
@@ -166,7 +166,7 @@ export default function ProfileScreen() {
         </TouchableOpacity>
 
         <View style={styles.versionContainer}>
-          <Text style={styles.versionText}>LegalSahayak v1.0.0</Text>
+          <Text style={styles.versionText}>VakeelIt v1.0.0</Text>
           <Text style={styles.copyrightText}>© 2025 All rights reserved</Text>
         </View>
       </ScrollView>

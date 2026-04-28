@@ -8,7 +8,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 
 export default function HomeScreen() {
@@ -73,7 +73,7 @@ export default function HomeScreen() {
               Legal Assistance at Your Fingertips
             </Text>
             <Text style={styles.infoText}>
-              LegalSahayak helps you understand complex legal matters, analyze
+              VakeelIt helps you understand complex legal matters, analyze
               cases, and connect with lawyers.
             </Text>
           </View>
@@ -124,7 +124,7 @@ export default function HomeScreen() {
             padding: 12,
           }}
         >
-          LegalSahayak is a legal research and drafting assistant for
+          VakeelIt is a legal research and drafting assistant for
           informational purposes only. It does not constitute legal advice.
           Always consult a qualified advocate for final legal decisions.
         </Text>
