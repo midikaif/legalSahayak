@@ -12,43 +12,53 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 
 export default function HomeScreen() {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const router = useRouter();
+  const isLawyer = user?.user_type === 'lawyer';
+
+  if (isLoading) return null;
 
   const features = [
-    {
-      id: 1,
-      title: "Contract Analysis",
-      description: "Simplify legal documents and understand contracts",
-      icon: "document-text",
-      color: "#4F46E5",
-      route: "/(tabs)/contract",
-    },
-    {
-      id: 2,
-      title: "Case Analysis",
-      description: "Get insights and strategy for your legal case",
-      icon: "briefcase",
-      color: "#10B981",
-      route: "/(tabs)/case",
-    },
-    {
-      id: 3,
-      title: "Legal Procedures",
-      description: "Step-by-step guide for legal processes",
-      icon: "list",
-      color: "#F59E0B",
-      route: "/(tabs)/case",
-    },
-    {
-      id: 4,
-      title: "Find Lawyers",
-      description: "Connect with qualified legal professionals",
-      icon: "people",
-      color: "#EF4444",
-      route: "/(tabs)/lawyers",
-    },
-  ];
+  {
+    id: 1,
+    title: 'Contract Analysis',
+    description: isLawyer
+      ? 'Review contracts, flag risky clauses and compliance issues'
+      : 'Simplify legal documents and understand contracts',
+    icon: 'document-text',
+    color: '#4F46E5',
+    route: '/(tabs)/contract',
+  },
+  {
+    id: 2,
+    title: 'Case Analysis',
+    description: isLawyer
+      ? 'Get IPC/CrPC sections, precedents and case strategy'
+      : 'Get insights and strategy for your legal case',
+    icon: 'briefcase',
+    color: '#10B981',
+    route: '/(tabs)/case',
+  },
+  {
+    id: 3,
+    title: 'Legal Procedures',
+    description: isLawyer
+      ? 'Draft applications, notices and legal documents instantly'
+      : 'Step-by-step guide for legal processes',
+    icon: 'list',
+    color: '#F59E0B',
+    route: '/(tabs)/case',
+  },
+  // Only show Find Lawyers for common users
+  ...(!isLawyer ? [{
+    id: 4,
+    title: 'Find Lawyers',
+    description: 'Connect with qualified legal professionals',
+    icon: 'people',
+    color: '#EF4444',
+    route: '/(tabs)/lawyers',
+  }] : []),
+];
 
   return (
     <SafeAreaView style={styles.container}>
@@ -82,10 +92,13 @@ export default function HomeScreen() {
         <Text style={styles.sectionTitle}>Features</Text>
 
         <View style={styles.featuresGrid}>
-          {features.map((feature) => (
-            <TouchableOpacity
+          {features.map((feature, index) => {
+            const isLastOdd = features.length % 2 !== 0 && index === features.length - 1;
+            return (<TouchableOpacity
               key={feature.id}
-              style={styles.featureCard}
+              style={[styles.featureCard,
+                 isLastOdd && styles.featureCardFull
+              ]}
               onPress={() => router.push(feature.route as any)}
             >
               <View
@@ -104,8 +117,8 @@ export default function HomeScreen() {
               <Text style={styles.featureDescription}>
                 {feature.description}
               </Text>
-            </TouchableOpacity>
-          ))}
+            </TouchableOpacity>)
+          })}
         </View>
 
         <View style={styles.tipCard}>
@@ -215,6 +228,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
+  },
+  featureCardFull: {
+    width: '100%',
   },
   featureIcon: {
     width: 64,

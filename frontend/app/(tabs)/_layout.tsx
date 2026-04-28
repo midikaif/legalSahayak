@@ -3,7 +3,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function TabLayout() {
-  const {user} = useAuth();
+  const { user } = useAuth();
+
+  const isLawyer = user?.user_type === 'lawyer';
 
   return (
     <Tabs
@@ -46,6 +48,8 @@ export default function TabLayout() {
         options={{
           title: 'Lawyers',
           tabBarIcon: ({ color, size }) => <Ionicons name="people" size={size} color={color} />,
+          tabBarItemStyle: isLawyer ? {display: 'none'} : {},
+          href: isLawyer ? null : '/(tabs)/lawyers',
         }}
       />
       <Tabs.Screen
