@@ -1,3 +1,5 @@
+// TODO: BEFORE LAUNCH - Upgrade to expo-secure-store for better JWT security
+
 import React, { createContext, useState, useContext, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 

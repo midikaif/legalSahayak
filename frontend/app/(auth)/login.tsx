@@ -32,10 +32,9 @@ export default function LoginScreen() {
 
     setLoading(true);
     try {
+      console.log(email)
       const response = await api.post('/auth/login', { email, password });
-      
-      // Axios automatically throws an error for 4xx/5xx status codes,
-      // so if we reach here, it was successful.
+      console.log(response)      
       await login(response.data.access_token, response.data.user);
       router.replace('/(tabs)/home');
     } catch (error: any) {
