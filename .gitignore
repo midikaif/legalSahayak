@@ -108,3 +108,5 @@ credentials.json
 *.pem
 *.key
 .credentials
+
+GEMINI.md

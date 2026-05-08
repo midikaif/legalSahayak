@@ -116,9 +116,9 @@ async def analyze_case_from_document(user_id: str, document_type: str, text_cont
         extracted_text = text_content
     elif document_type == "pdf" and file_content:
         pdf_bytes = base64.b64decode(file_content.split('base64,')[1] if 'base64,' in file_content else file_content)
-        extracted_text = extract_text_from_pdf(pdf_bytes)
+        extracted_text = await extract_text_from_pdf(pdf_bytes)
     elif document_type == "image" and file_content:
-        extracted_text = extract_text_from_image(file_content)
+        extracted_text = await extract_text_from_image(file_content)
     
     if not extracted_text or len(extracted_text.strip()) < 10:
         raise HTTPException(status_code=400, detail="Could not extract text from the document. Try pasting the text directly.")

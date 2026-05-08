@@ -1,35 +1,20 @@
-import base64
-from io import BytesIO
-from PIL import Image
-import PyPDF2
-import pytesseract
 import logging
+from app.services.pdf_client import extract_text_from_pdf_worker, extract_text_from_image_worker
 
 logger = logging.getLogger(__name__)
 
-def extract_text_from_pdf(file_content: bytes) -> str:
-    """Extract text from PDF"""
+async def extract_text_from_pdf(file_content: bytes) -> str:
+    """Extract text from PDF by delegating to PDF-Worker"""
     try:
-        pdf_file = BytesIO(file_content)
-        pdf_reader = PyPDF2.PdfReader(pdf_file)
-        text = ""
-        for page in pdf_reader.pages:
-            text += page.extract_text()
-        return text
+        return await extract_text_from_pdf_worker(file_content)
     except Exception as e:
-        logger.error(f"PDF extraction error: {str(e)}")
+        logger.error(f"PDF extraction error (delegated): {str(e)}")
         return ""
 
-def extract_text_from_image(image_base64: str) -> str:
-    """Extract text from image using OCR"""
+async def extract_text_from_image(image_base64: str) -> str:
+    """Extract text from image by delegating to PDF-Worker"""
     try:
-        if 'base64,' in image_base64:
-            image_base64 = image_base64.split('base64,')[1]
-        
-        image_data = base64.b64decode(image_base64)
-        image = Image.open(BytesIO(image_data))
-        text = pytesseract.image_to_string(image)
-        return text
+        return await extract_text_from_image_worker(image_base64)
     except Exception as e:
-        logger.error(f"Image OCR error: {str(e)}")
+        logger.error(f"Image OCR error (delegated): {str(e)}")
         return ""

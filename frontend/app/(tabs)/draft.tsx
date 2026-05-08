@@ -14,8 +14,9 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/contexts/AuthContext';
+import { showAlert } from '@/utils/alert';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8001';
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000';
 
 // ─── Draft types and their input fields ───────────────────────────
 const DRAFT_TYPES = [
@@ -165,7 +166,7 @@ export default function DraftScreen() {
       (f) => !formValues[f.key]?.trim()
     );
     if (missing.length > 0) {
-      Alert.alert('Missing Fields', `Please fill: ${missing.map((f) => f.label).join(', ')}`);
+      showAlert('Missing Fields', `Please fill: ${missing.map((f) => f.label).join(', ')}`);
       return;
     }
     console.log('in generate')
@@ -181,7 +182,7 @@ export default function DraftScreen() {
           user_id: user.id,
         }),
       });
-
+      console.log(response)
       if (!response.ok) {
         const err = await response.json();
         throw new Error(err.detail || 'Failed to generate draft');
@@ -191,7 +192,7 @@ export default function DraftScreen() {
       setResult(data);
       setStep('result');
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Could not generate draft. Please try again.');
+      showAlert('Error', error.message || 'Could not generate draft. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -225,7 +226,7 @@ export default function DraftScreen() {
         });
         await Sharing.shareAsync(path, { mimeType: 'application/pdf' });
       } catch {
-        Alert.alert('Error', 'Could not download on this device. Try on web.');
+        showAlert('Error', 'Could not download on this device. Try on web.');
       }
     }
   };
@@ -753,7 +754,7 @@ const styles = StyleSheet.create({
 //       setGeneratedDoc(response.data.content); 
 //     } catch (error) {
 //       console.error("Failed to generate draft:", error);
-//       Alert.alert("Error", "Failed to generate the document.");
+//       showAlert("Error", "Failed to generate the document.");
 //     } finally {
 //       setLoading(false);
 //     }

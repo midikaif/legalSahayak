@@ -1,31 +1,16 @@
-
-# ==================== DRAFT GENERATION ROUTES ====================
 from fastapi import APIRouter, HTTPException
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.units import inch, cm
-from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT, TA_JUSTIFY
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable, Table, TableStyle
-from reportlab.lib import colors
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
 from pydantic import BaseModel, Field
 from datetime import datetime
 import uuid
-import re
 import logging
 from app.services.ai_service import get_ai_analysis
-from io import BytesIO
-import base64
-
+from app.services.pdf_client import call_draft_pdf_worker
 from app.core.database import get_db
 
 router = APIRouter(prefix="/draft", tags=["draft"])
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uvicorn.error")
 
 db = get_db()
-
-# ---- Pydantic model (add with other models) ----
 
 class DraftRequest(BaseModel):
     draft_type: str       # e.g. "vakalatnama", "bail_application"
@@ -41,52 +26,56 @@ class DraftResponse(BaseModel):
     pdf_base64: str       # Base64 encoded PDF
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
-# ---- Draft config: defines required fields per draft type ----
-
 DRAFT_CONFIGS = {
     "vakalatnama": {
         "title_en": "VAKALATNAMA",
         "title_hi": "वकालतनामा",
         "description": "Authorization letter from client to lawyer",
+        "structure_instructions": "Format MUST include:\n- 'IN THE COURT OF [COURT NAME]'\n- Suit/Case No.\n- Cause Title (Plaintiff/Applicant vs. Defendant/Respondent)\n- 'KNOW ALL MEN by these presents that I/We...'\n- Explicit clauses authorizing the Advocate to appear, plead, act, file documents, and compromise.\n- Signatures of Executant(s) and 'ACCEPTED' section with Advocate's signature.",
     },
     "bail_application": {
         "title_en": "APPLICATION FOR BAIL",
         "title_hi": "जमानत के लिए आवेदन",
         "description": "Application for bail before court",
+        "structure_instructions": "Format MUST include:\n- 'IN THE COURT OF [COURT NAME]'\n- FIR No., U/S (Under Section), P.S. (Police Station)\n- Cause Title (Applicant vs. State)\n- 'MOST RESPECTFULLY SHOWETH:' followed by numbered paragraphs stating facts, applicant's innocence, readiness to furnish surety, and non-tampering with evidence.\n- PRAYER clause clearly requesting bail.\n- Verification/Signatures: Place, Date, Applicant's Signature (Through Counsel).",
     },
     "legal_notice": {
         "title_en": "LEGAL NOTICE",
         "title_hi": "कानूनी नोटिस",
         "description": "Formal legal notice to a party",
+        "structure_instructions": "Format MUST include:\n- 'BY REGISTERED POST A/D' at the top.\n- Date of Notice.\n- Addressee Details (To, [Name, Address]).\n- Opening: 'Under instructions from and on behalf of my client [Client Name], I do hereby serve upon you with the following notice:'\n- Numbered paragraphs detailing the facts, breach/dispute, and the specific demand.\n- A strict deadline (e.g., 15 days) to comply with the demand.\n- Warning of legal consequences (civil/criminal action) if the demand is not met.\n- Signature of the Advocate issuing the notice.",
     },
     "affidavit": {
         "title_en": "AFFIDAVIT",
         "title_hi": "शपथ पत्र",
         "description": "Sworn statement before court",
+        "structure_instructions": "Format MUST include:\n- 'IN THE COURT OF [COURT NAME]' (if filed in court).\n- Cause Title (if any).\n- Deponent details: 'AFFIDAVIT OF [Name], S/O [Father's Name], AGED ABOUT [Age] YEARS, R/O [Address]'.\n- Oath: 'I, the above-named deponent, do hereby solemnly affirm and declare as under:'\n- Numbered paragraphs stating the sworn facts.\n- 'DEPONENT' signature block.\n- VERIFICATION clause: 'Verified at [Place] on this [Date] that the contents of the above affidavit are true and correct to my knowledge...'\n- Second 'DEPONENT' signature block after verification.",
     },
     "written_statement": {
         "title_en": "WRITTEN STATEMENT",
         "title_hi": "लिखित बयान",
         "description": "Defendant's reply to plaint",
+        "structure_instructions": "Format MUST include:\n- 'IN THE COURT OF [COURT NAME]'\n- Suit No. / Case Details.\n- Cause Title (Plaintiff vs. Defendant).\n- 'PRELIMINARY OBJECTIONS:' numbered paragraphs (e.g., lack of cause of action, limitation).\n- 'PARAWISE REPLY ON MERITS:' numbered paragraphs matching the plaintiff's plaint.\n- PRAYER clause requesting dismissal of the suit with costs.\n- Verification clause stating which paragraphs are true to knowledge and which are based on legal advice.\n- Place, Date, Defendant's Signature, Advocate's Signature.",
     },
     "mou": {
         "title_en": "MEMORANDUM OF UNDERSTANDING",
         "title_hi": "समझौता ज्ञापन",
         "description": "MOU between two or more parties",
+        "structure_instructions": "Format MUST include:\n- Execution Date and Place.\n- Details of 'First Party' and 'Second Party' (Names, Addresses, Representation).\n- 'WHEREAS:' recitals setting out the background, intent, and context of the agreement.\n- 'NOW THEREFORE, the Parties agree as follows:'\n- Numbered clauses for Terms and Conditions (scope of work, obligations, payment, duration, termination, dispute resolution).\n- Signature blocks for 'First Party', 'Second Party', and two Witnesses.",
     },
     "power_of_attorney": {
         "title_en": "POWER OF ATTORNEY",
         "title_hi": "मुख्तारनामा",
         "description": "Authority granted from one person to another",
+        "structure_instructions": "Format MUST include:\n- 'KNOW ALL MEN BY THESE PRESENTS THAT I, [Name], S/O [Father], R/O [Address]...'\n- '...do hereby appoint, nominate and constitute [Attorney Name] as my true and lawful attorney...'\n- Numbered list of specific powers granted (e.g., to manage property, represent in court, sign documents).\n- 'AND I hereby agree to ratify and confirm all acts done by my said attorney...'\n- Execution block: 'IN WITNESS WHEREOF...'\n- Date, Place, Signature of Executant, Signatures of two Witnesses.",
     },
     "demand_letter": {
         "title_en": "DEMAND LETTER",
         "title_hi": "मांग पत्र",
         "description": "Formal letter demanding payment or action",
+        "structure_instructions": "Format MUST include:\n- Sender Details & Date.\n- Addressee Details.\n- Subject Line clearly stating the demand (e.g., 'SUBJECT: DEMAND FOR OUTSTANDING PAYMENT').\n- Formal salutation.\n- Body detailing the background of the transaction/dispute, the exact outstanding amount or required action, and reference to any previous correspondence.\n- A strict deadline to comply.\n- Notice that failure to comply will result in further legal action.\n- Sign-off and Signature of Sender.",
     },
 }
-
-# ---- AI prompt builder ----
 
 def build_draft_prompt(draft_type: str, language: str, inputs: dict) -> str:
     lang_instruction = (
@@ -97,344 +86,33 @@ def build_draft_prompt(draft_type: str, language: str, inputs: dict) -> str:
     )
 
     inputs_text = "\n".join([f"- {k.replace('_', ' ').title()}: {v}" for k, v in inputs.items()])
-
     config = DRAFT_CONFIGS[draft_type]
     title = config["title_hi"] if language == "hindi" else config["title_en"]
+    structure_instructions = config["structure_instructions"]
     
-    prompts = {
-        "vakalatnama": f"""Generate a complete, court-ready VAKALATNAMA for Indian courts.
-        Use "{title}" as the document title. Do not add any other language title.
-    
+    return f"""Generate a complete, court-ready document for Indian courts.
 {lang_instruction}
+
+STRICT FORMATTING RULES:
+1. Ensure the draft follows standard Indian legal formats for a {title}.
+2. TITLE REQUIREMENT: You MUST explicitly include the title "{title}" prominently centered at the top of the document.
+3. SPECIFIC DOCUMENT STRUCTURE:
+{structure_instructions}
+4. OUTPUT FORMAT: You MUST generate the output as clean, well-structured HTML.
+   - Use proper HTML tags (<center>, <b>, <u>, <p>, <br>, etc.) to format the document EXACTLY as it should appear on paper.
+   - For example, Court Details, Cause Title, and Document Title should typically be centered and bold.
+   - The body paragraphs should be justified.
+   - Do NOT wrap the HTML in markdown blocks (e.g. ```html). Just output the raw HTML code.
 
 Details provided:
 {inputs_text}
 
-The VAKALATNAMA must include:
-1. Title ({title})
-2. Court name and jurisdiction
-3. Case title and number
-4. Full authorization text from client to advocate
-5. Scope of authority (appear, plead, act, sign)
-6. Undertaking by client
-7. Signature blocks for both client and advocate with date and place
-8. Advocate's bar council enrollment number
-9. Standard undertaking clause as per Bar Council of India Rules
-
-Generate the COMPLETE document text exactly as it would appear on paper.
-Do NOT add any explanation or JSON. Just the raw document text.""",
-
-        "bail_application": f"""Generate a complete, court-ready BAIL APPLICATION for Indian courts under CrPC.
-        Use "{title}" as the document title. Do not add any other language title.
-
-{lang_instruction}
-
-Details provided:
-{inputs_text}
-
-The {title} must include:
-1. Court heading with full case details
-2. Application title
-3. "MOST RESPECTFULLY SHOWETH" section
-4. Detailed grounds for bail (at least 6 strong legal grounds)
-5. Cite relevant CrPC sections (436, 437, or 439 as applicable)
-6. Reference to relevant Supreme Court judgements on bail
-7. Prayer clause
-8. Verification
-9. Place and date
-10. Advocate signature block
-
-Generate the COMPLETE document text exactly as it would appear on paper.
-Do NOT add any explanation or JSON. Just the raw document text.""",
-
-        "legal_notice": f"""Generate a complete, formal LEGAL NOTICE as used in Indian legal practice.
-        Use "{title}" as the document title. Do not add any other language title.
-
-{lang_instruction}
-
-Details provided:
-{inputs_text}
-
-The notice must include:
-1. Advocate's letterhead block (name, enrollment number, address)
-2. Notice number and date
-3. Addressee details
-4. Subject line
-5. "UNDER INSTRUCTION FROM MY CLIENT" opener
-6. Detailed facts and legal basis
-7. Specific legal provisions violated
-8. Clear demand/relief sought
-9. Consequence of non-compliance (legal proceedings)
-10. Timeline given (usually 15-30 days)
-11. Advocate signature with seal note
-
-Generate the COMPLETE document text exactly as it would appear on paper.
-Do NOT add any explanation or JSON. Just the raw document text.""",
-
-        "affidavit": f"""Generate a complete, court-ready AFFIDAVIT for Indian courts.
-        Use "{title}" as the document title. Do not add any other language title.
-
-{lang_instruction}
-
-Details provided:
-{inputs_text}
-
-The affidavit must include:
-1. Court heading
-2. "AFFIDAVIT" title
-3. Deponent details (full name, age, address, occupation)
-4. "I, the above-named deponent do hereby solemnly affirm and state as under:"
-5. Numbered paragraphs with facts
-6. Verification clause: "Verified at [place] on [date]..."
-7. Deponent signature block
-8. Notary/Oath Commissioner section
-
-Generate the COMPLETE document text exactly as it would appear on paper.
-Do NOT add any explanation or JSON. Just the raw document text.""",
-
-        "written_statement": f"""Generate a complete WRITTEN STATEMENT (reply to plaint) for Indian civil courts.
-        Use "{title}" as the document title. Do not add any other language title.
-
-{lang_instruction}
-
-Details provided:
-{inputs_text}
-
-The written statement must include:
-1. Court heading with case number
-2. "WRITTEN STATEMENT ON BEHALF OF DEFENDANT"
-3. Preliminary objections (jurisdiction, limitation, maintainability)
-4. Reply to each allegation paragraph-by-paragraph
-5. Additional pleas
-6. Prayer clause
-7. Verification by defendant
-8. Advocate signature
-
-Generate the COMPLETE document text exactly as it would appear on paper.
-Do NOT add any explanation or JSON. Just the raw document text.""",
-
-        "mou": f"""Generate a complete MEMORANDUM OF UNDERSTANDING (MOU) as used in Indian legal practice.
-        Use "{title}" as the document title. Do not add any other language title.
-
-{lang_instruction}
-
-Details provided:
-{inputs_text}
-
-The MOU must include:
-1. Title and date
-2. Parties section with full details
-3. Recitals/Background (WHEREAS clauses)
-4. Definitions
-5. Scope and purpose
-6. Obligations of each party
-7. Duration and termination
-8. Confidentiality clause
-9. Dispute resolution (arbitration under Arbitration & Conciliation Act 1996)
-10. Governing law (Indian law, specific jurisdiction)
-11. Signature blocks for all parties with witnesses
-
-Generate the COMPLETE document text exactly as it would appear on paper.
-Do NOT add any explanation or JSON. Just the raw document text.""",
-
-        "power_of_attorney": f"""Generate a complete POWER OF ATTORNEY(POA) as used in Indian legal practice.
-        Use "{title}" as the document title. Do not add any other language title.
-
-{lang_instruction}
-
-Details provided:
-{inputs_text}
-
-The POA must include:
-1. Title: {title}
-2. Date and place of execution
-3. Grantor's full details
-4. Attorney's full details
-5. KNOW ALL MEN BY THESE PRESENTS opening
-6. Specific powers granted (numbered list)
-7. Ratification clause
-8. Revocation clause
-9. Execution on stamp paper note
-10. Signature of grantor
-11. Two witness signature blocks
-12. Notary acknowledgment section
-
-Generate the COMPLETE document text exactly as it would appear on paper.
-Do NOT add any explanation or JSON. Just the raw document text.""",
-
-        "demand_letter": f"""Generate a complete DEMAND LETTER as used in Indian legal practice.
-        Use "{title}" as the document title. Do not add any other language title.
-
-{lang_instruction}
-
-Details provided:
-{inputs_text}
-
-The demand letter must include:
-1. Sender's/Advocate's letterhead
-2. Date
-3. Recipient details
-4. Subject line
-5. Reference to previous communications if any
-6. Clear statement of the dispute/issue
-7. Legal basis for the demand
-8. Specific demand (payment, action, or both)
-9. Deadline (typically 15 days)
-10. Consequences of non-compliance
-11. Without prejudice note if applicable
-12. Signature
-
-Generate the COMPLETE document text exactly as it would appear on paper.
-Do NOT add any explanation or JSON. Just the raw document text.""",
-    }
-
-    return prompts.get(draft_type, f"""Generate a complete {draft_type.replace('_', ' ').upper()} document for Indian courts.
-{lang_instruction}
-Details: {inputs_text}
-Generate the COMPLETE formal document text. No explanation, just the document.""")
-
-
-# ---- PDF Generator ----
-
-def generate_pdf(content: str, draft_type: str, language: str) -> bytes:
-    """Generate a properly formatted PDF from draft content"""
-    import json
-    from reportlab.lib.pagesizes import A4
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib.units import inch, cm
-    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT, TA_JUSTIFY
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable
-    from reportlab.lib import colors
-
-    buffer = BytesIO()
-    
-    doc = SimpleDocTemplate(
-        buffer,
-        pagesize=A4,
-        rightMargin=2.5 * cm,
-        leftMargin=2.5 * cm,
-        topMargin=2.5 * cm,
-        bottomMargin=2.5 * cm,
-    )
-
-    styles = getSampleStyleSheet()
-
-    # Custom styles matching court document look
-    title_style = ParagraphStyle(
-        'CourtTitle',
-        parent=styles['Normal'],
-        fontSize=14,
-        fontName='Helvetica-Bold',
-        alignment=TA_CENTER,
-        spaceAfter=6,
-        spaceBefore=6,
-        textColor=colors.black,
-    )
-    heading_style = ParagraphStyle(
-        'CourtHeading',
-        parent=styles['Normal'],
-        fontSize=11,
-        fontName='Helvetica-Bold',
-        alignment=TA_CENTER,
-        spaceAfter=4,
-        spaceBefore=4,
-    )
-    body_style = ParagraphStyle(
-        'CourtBody',
-        parent=styles['Normal'],
-        fontSize=10,
-        fontName='Helvetica',
-        alignment=TA_JUSTIFY,
-        spaceAfter=6,
-        spaceBefore=2,
-        leading=16,
-    )
-    signature_style = ParagraphStyle(
-        'Signature',
-        parent=styles['Normal'],
-        fontSize=10,
-        fontName='Helvetica',
-        alignment=TA_RIGHT,
-        spaceAfter=4,
-        spaceBefore=12,
-    )
-
-    story = []
-
-    # Top border line
-    story.append(HRFlowable(width="100%", thickness=2, color=colors.black))
-    story.append(Spacer(1, 0.2 * cm))
-
-    # Process content line by line
-    
-    # Strip markdown bold/italic symbols
-    content = re.sub(r'\*{1,3}(.*?)\*{1,3}', r'\1', content)
-    # Strip markdown headers
-    content = re.sub(r'^#{1,6}\s*', '', content, flags=re.MULTILINE)
-    lines = content.split('\n')
-    
-    for line in lines:
-        stripped = line.strip()
-        if not stripped:
-            story.append(Spacer(1, 0.25 * cm))
-            continue
-
-        # Detect line type and apply appropriate style
-        is_title = (
-            stripped.isupper() and len(stripped) > 3
-            or any(stripped.startswith(t) for t in [
-                'VAKALATNAMA', 'APPLICATION FOR', 'LEGAL NOTICE',
-                'AFFIDAVIT', 'WRITTEN STATEMENT', 'MEMORANDUM',
-                'POWER OF ATTORNEY', 'DEMAND LETTER',
-                'वकालतनामा', 'शपथ पत्र', 'कानूनी नोटिस',
-            ])
-        )
-        is_heading = (
-            stripped.startswith('IN THE') or
-            stripped.startswith('BEFORE THE') or
-            stripped.startswith('WHEREAS') or
-            stripped.startswith('PRAYER') or
-            stripped.startswith('VERIFICATION') or
-            stripped.startswith('TO,') or
-            stripped.startswith('Yours faithfully') or
-            stripped.startswith('Yours sincerely')
-        )
-        is_signature = (
-            'Advocate' in stripped or
-            'Deponent' in stripped or
-            'Signature' in stripped or
-            stripped.startswith('Place:') or
-            stripped.startswith('Date:')
-        )
-
-        # Escape special chars for reportlab
-        safe_line = (stripped
-            .replace('&', '&amp;')
-            .replace('<', '&lt;')
-            .replace('>', '&gt;'))
-
-        if is_title:
-            story.append(Paragraph(safe_line, title_style))
-        elif is_heading:
-            story.append(Paragraph(safe_line, heading_style))
-        elif is_signature:
-            story.append(Paragraph(safe_line, signature_style))
-        else:
-            story.append(Paragraph(safe_line, body_style))
-
-    # Bottom border
-    story.append(Spacer(1, 0.3 * cm))
-    story.append(HRFlowable(width="100%", thickness=1, color=colors.black))
-
-    doc.build(story)
-    return buffer.getvalue()
-
-
-# ---- API Route ----
+Generate the COMPLETE document HTML exactly as it would appear on paper.
+Do NOT add any introductory explanation or markdown. Just the raw HTML code."""
 
 @router.post("/generate")
 async def generate_draft(request: DraftRequest):
-    """Generate a legal draft document and return as PDF"""
+    """Generate a legal draft document and return as PDF via worker"""
 
     if request.draft_type not in DRAFT_CONFIGS:
         raise HTTPException(
@@ -447,15 +125,53 @@ async def generate_draft(request: DraftRequest):
 
     # Build prompt and get AI content
     prompt = build_draft_prompt(request.draft_type, request.language, request.inputs)
-    
-    content = await get_ai_analysis(prompt)
+    # logger.info(f"Draft prompt: {prompt}")
+    html_content = await get_ai_analysis(prompt)
 
-    # Generate PDF
+    # Clean markdown if AI included it
+    import re
+    match = re.search(r'```(?:html)?(.*?)```', html_content, re.DOTALL | re.IGNORECASE)
+    if match:
+        html_content = match.group(1).strip()
+    else:
+        # Fallback to stripping if no code block found
+        html_content = html_content.strip()
+        if html_content.startswith("<!DOCTYPE html>"):
+            pass # Keep it
+        elif html_content.startswith("<html"):
+            pass # Keep it
+        else:
+            # Maybe just raw HTML tags without wrapper
+            pass
+
+    full_html = f"""
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <style>
+            body {{
+                font-family: 'Mukta', Helvetica, Arial, sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }}
+            p {{ text-align: justify; margin-bottom: 15px; }}
+            .center {{ text-align: center; }}
+        </style>
+    </head>
+    <body>
+        {html_content}
+    </body>
+    </html>
+    """
+
+    # Generate PDF by delegating to worker
+    from app.services.pdf_client import call_pdf_worker
     try:
-        pdf_bytes = generate_pdf(content, request.draft_type, request.language)
-        pdf_base64 = base64.b64encode(pdf_bytes).decode('utf-8')
+        logger.info("==============================Before PDF generation==============================")
+        pdf_base64 = await call_pdf_worker(full_html)
+        logger.info("==============================After PDF generation==============================")
     except Exception as e:
-        logger.error(f"PDF generation error: {str(e)}")
+        logger.error(f"PDF generation error (delegated): {str(e)}")
         pdf_base64 = ""
 
     # Save to DB
@@ -465,7 +181,7 @@ async def generate_draft(request: DraftRequest):
         "draft_type": request.draft_type,
         "language": request.language,
         "inputs": request.inputs,
-        "content": content,
+        "content": html_content,
         "created_at": datetime.utcnow().isoformat(),
     }
     await db.drafts.insert_one(draft_record)
@@ -474,47 +190,18 @@ async def generate_draft(request: DraftRequest):
         "id": draft_record["id"],
         "draft_type": request.draft_type,
         "language": request.language,
-        "content": content,
+        "content": html_content,
         "pdf_base64": pdf_base64,
     }
 
-
 @router.get("/history/{user_id}")
 async def get_draft_history(user_id: str):
-    """Get past drafts for a user"""
     drafts = await db.drafts.find({"user_id": user_id}).sort("created_at", -1).to_list(50)
     for d in drafts:
         d.pop('_id', None)
-        d.pop('pdf_base64', None)  # Don't return heavy PDF in list
+        d.pop('pdf_base64', None)
     return drafts
-
 
 @router.get("/types")
 async def get_draft_types():
-    """Return list of supported draft types"""
-    return [
-        {"key": k, **v} for k, v in DRAFT_CONFIGS.items()
-    ]
-
-
-
-# ===========================================
-# ===========================================
-# ===========================================
-# ===========================================
-
-# from fastapi import APIRouter, Response
-# from typing import List
-# from app.schemas.draft import DraftGenerateRequest, DocumentTemplate
-# from app.controllers.draft_controller import generate_draft, fetch_all_templates
-
-# router = APIRouter(prefix="/draft", tags=["Drafting"])
-
-
-# @router.get("/templates", response_model=List[DocumentTemplate])
-# async def get_templates():
-#     return await fetch_all_templates()
-
-# @router.post("/generate", response_class=Response)
-# async def create_draft(request: DraftGenerateRequest):
-#     return await generate_draft(request.template_id, request.user_inputs)
+    return [{"key": k, **v} for k, v in DRAFT_CONFIGS.items()]

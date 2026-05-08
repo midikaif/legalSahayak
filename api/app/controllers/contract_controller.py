@@ -21,9 +21,9 @@ async def analyze_contract(
         original_text = text_content
     elif document_type == "pdf" and file_content:
         pdf_bytes = base64.b64decode(file_content.split('base64,')[1] if 'base64,' in file_content else file_content)
-        original_text = extract_text_from_pdf(pdf_bytes)
+        original_text = await extract_text_from_pdf(pdf_bytes)
     elif document_type == "image" and file_content:
-        original_text = extract_text_from_image(file_content)
+        original_text = await extract_text_from_image(file_content)
     
     if not original_text or len(original_text.strip()) < 10:
         raise HTTPException(status_code=400, detail="Could not extract text from document")
