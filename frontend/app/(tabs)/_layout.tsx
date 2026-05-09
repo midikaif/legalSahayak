@@ -72,13 +72,6 @@ export default function TabLayout() {
         }}
       />
 
-      {/* ------- */}
-      <Tabs.Screen
-        name="research"
-        options={{
-          href: null, // This hides the tab button
-        }}
-      />
     </Tabs>
   );
 }
