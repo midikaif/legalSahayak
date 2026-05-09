@@ -1,0 +1,30 @@
+services:
+  # API Backend Service
+  - type: web
+    name: legalsahayak-api
+    env: python
+    region: singapore # Change as needed
+    plan: free
+    rootDir: api
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn index:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: MONGO_URI
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: PDF_WORKER_URL
+        fromService:
+          type: web
+          name: legalsahayak-pdf-worker
+          envVarKey: RENDER_EXTERNAL_URL
+
+  # PDF Worker Service
+  - type: web
+    name: legalsahayak-pdf-worker
+    env: docker
+    region: singapore # Change as needed
+    plan: free
+    rootDir: pdf-worker
