@@ -125,7 +125,7 @@ async def generate_draft(request: DraftRequest):
 
     # Build prompt and get AI content
     prompt = build_draft_prompt(request.draft_type, request.language, request.inputs)
-    # logger.info(f"Draft prompt: {prompt}")
+    
     html_content = await get_ai_analysis(prompt)
 
     # Clean markdown if AI included it
@@ -184,6 +184,21 @@ async def generate_draft(request: DraftRequest):
         logger.error(f"PDF generation error (delegated): {str(e)}")
         pdf_base64 = ""
 
+    # Create plain text version for frontend preview
+    def strip_html_tags(text: str) -> str:
+        # Replace block tags and line breaks with newlines to preserve spacing
+        text = re.sub(r'<(br|/p|/div|/tr|/h[1-6])[^>]*>', '\n', text, flags=re.IGNORECASE)
+        # Remove all other HTML tags
+        text = re.sub(r'<[^>]+>', '', text)
+        # Unescape common HTML entities
+        text = text.replace('&nbsp;', ' ').replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>')
+        text = text.replace('&#39;', "'").replace('&quot;', '"')
+        # Clean up excessive newlines
+        text = re.sub(r'\n\s*\n', '\n\n', text)
+        return text.strip()
+        
+    plain_text_content = strip_html_tags(html_content)
+
     # Save to DB
     draft_record = {
         "id": str(uuid.uuid4()),
@@ -191,7 +206,7 @@ async def generate_draft(request: DraftRequest):
         "draft_type": request.draft_type,
         "language": request.language,
         "inputs": request.inputs,
-        "content": html_content,
+        "content": plain_text_content,
         "created_at": datetime.utcnow().isoformat(),
     }
     await db.drafts.insert_one(draft_record)
@@ -200,7 +215,7 @@ async def generate_draft(request: DraftRequest):
         "id": draft_record["id"],
         "draft_type": request.draft_type,
         "language": request.language,
-        "content": html_content,
+        "content": plain_text_content,
         "pdf_base64": pdf_base64,
     }
 
