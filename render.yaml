@@ -1,7 +1,7 @@
 services:
   # API Backend Service
   - type: web
-    name: legalsahayak-api
+    name: legalsahayak-api-us
     env: python
     region: oregon # Change as needed
     plan: free
@@ -27,8 +27,8 @@ services:
 
   # PDF Worker Service
   - type: web
-    name: legalsahayak-pdf-worker
+    name: legalsahayak-pdf-worker-us
     env: docker
-    region: singapore # Change as needed
+    region: oregon # Change as needed
     plan: free
     rootDir: pdf-worker
