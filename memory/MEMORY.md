@@ -1,4 +1,4 @@
-# Project Memory - LegalSahayak
+# Project Memory - VakeelIt
 
 ## PDF Generation
 - Migrated `pdf-worker` from `xhtml2pdf` to `ReportLab` for better Hindi (Devanagari) support.

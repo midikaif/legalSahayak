@@ -1,6 +1,6 @@
 <div align="center">
   <img src="https://img.icons8.com/color/96/000000/law.png" alt="Logo">
-  <h1>⚖️ VakeelIt / LegalSahayak</h1>
+  <h1>⚖️ VakeelIt</h1>
   <p><strong>AI-Powered Legal Assistant & Drafting Engine for the Indian Legal System</strong></p>
 
   <p>

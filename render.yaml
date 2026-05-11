@@ -1,7 +1,7 @@
 services:
   # API Backend Service
   - type: web
-    name: legalsahayak-api-us
+    name: VakeelIt-api-us
     env: python
     region: oregon # Change as needed
     plan: free
@@ -22,12 +22,12 @@ services:
       - key: PDF_WORKER_URL
         fromService:
           type: web
-          name: legalsahayak-pdf-worker
+          name: VakeelIt-pdf-worker
           envVarKey: RENDER_EXTERNAL_URL
 
   # PDF Worker Service
   - type: web
-    name: legalsahayak-pdf-worker-us
+    name: VakeelIt-pdf-worker-us
     env: docker
     region: oregon # Change as needed
     plan: free
